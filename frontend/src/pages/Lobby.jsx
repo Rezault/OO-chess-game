@@ -97,6 +97,7 @@ function WebSocketTest() {
         <div>
           <p>Player 1: {lobby.player1 || "(empty)"}</p>
           <p>Player 2: {lobby.player2 || "(empty)"}</p>
+          <button>Ready</button>
           <div>
             <h4>Chat</h4>
             <ul>
