@@ -88,7 +88,24 @@ function Game() {
   return (
     <div className="game-layout">
       <div className="board-pane">
-        <ChessBoard gameState={gameState} myName={name} />
+        <ChessBoard
+          gameState={gameState}
+          myName={name}
+          onAttemptMove={(from, to) => {
+            if (!client || !client.connected) return;
+
+            client.publish({
+              destination: "/app/move",
+              body: JSON.stringify({
+                fromRow: from[0],
+                fromCol: from[1],
+                toRow: to[0],
+                toCol: to[1],
+                player: name,
+              }),
+            });
+          }}
+        />
       </div>
       <div className="board-pane">
         <Chat messages={messages} onSend={sendChat} />

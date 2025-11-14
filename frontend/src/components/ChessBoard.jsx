@@ -3,10 +3,11 @@ import { initialBoard } from "../game/initialBoard";
 import { pieceImages } from "../game/pieceImages";
 import { applyMoveIfLegal } from "../game/engine";
 
-function ChessBoard({ gameState, myName }) {
-  const [board, setBoard] = useState(initialBoard);
+function ChessBoard({ gameState, myName, onAttemptMove }) {
   const [selected, setSelected] = useState(null); // [row, col] or null
-  const [turn, setTurn] = useState("w"); // "w" or "b"
+
+  const board = gameState?.board.grid || initialBoard;
+  const turn = gameState?.turn === "WHITE" ? "w" : "b";
 
   // figure out if I am white or black
   const myColor =
@@ -34,6 +35,11 @@ function ChessBoard({ gameState, myName }) {
         return;
       }
 
+      if (pieceColor !== myColor) {
+        // cannot choose another player's piece
+        return;
+      }
+
       setSelected([row, col]);
       return;
     }
@@ -44,17 +50,16 @@ function ChessBoard({ gameState, myName }) {
       return;
     }
 
-    // Try to move from selected -> (row, col)
-    const newBoard = applyMoveIfLegal(board, selected, [row, col], turn);
-    if (newBoard) {
-      setBoard(newBoard);
+    // local check
+    const tmpBoard = applyMoveIfLegal(board, selected, [row, col], turn);
+    if (!tmpBoard) {
       setSelected(null);
-      setTurn(turn === "w" ? "b" : "w");
-      // later: send move to backend here
-    } else {
-      // illegal move -> either keep selection or clear it
-      setSelected(null);
+      return;
     }
+
+    // looks legal, time to move to the server
+    onAttemptMove(selected, [row, col]);
+    setSelected(null);
   };
 
   // helper to know if a square is selected
@@ -116,7 +121,7 @@ function ChessBoard({ gameState, myName }) {
         overflow: "hidden",
       }}
     >
-      {/* Top name should always be the opponent */}
+      {/* top name should always be the opponent */}
       <div
         style={{
           marginTop: "0.5rem",
@@ -141,7 +146,7 @@ function ChessBoard({ gameState, myName }) {
         {squares}
       </div>
 
-      {/* Bottom name is always me */}
+      {/* bottom name is always me */}
       <div
         style={{
           marginTop: "0.5rem",

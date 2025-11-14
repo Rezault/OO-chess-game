@@ -11,13 +11,15 @@ public class GameState {
 	private String blackPlayer;
 	private Status status;
 	private String turn;
+	private Board board;
 	
 	public GameState() {}
-	public GameState(String whitePlayer, String blackPlayer, Status status, String turn) {
+	public GameState(String whitePlayer, String blackPlayer, Status status, String turn, Board board) {
 		this.whitePlayer = whitePlayer;
 	    this.blackPlayer = blackPlayer;
 	    this.status = status;
 	    this.turn = turn;
+	    this.board = board;
 	}
 	
 	public String getWhitePlayer() { return whitePlayer; }
@@ -31,4 +33,7 @@ public class GameState {
 
     public String getTurn() { return turn; }
     public void setTurn(String turn) { this.turn = turn; }
+    
+    public Board getBoard() { return board; }
+    public void setBoard(Board board) { this.board = board; }
 }
