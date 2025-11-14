@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { initialBoard } from "../game/initialBoard";
 import { pieceImages } from "../game/pieceImages";
-import { applyMoveIfLegal } from "../game/engine";
+import { applyMoveIfLegal, computeValidMoves } from "../game/engine";
 
 function ChessBoard({ gameState, myName, onAttemptMove }) {
   const [selected, setSelected] = useState(null); // [row, col] or null
+  const [moveSquares, setMoveSquares] = useState([]);
 
   const board = gameState?.board.grid || initialBoard;
   const turn = gameState?.turn === "WHITE" ? "w" : "b";
@@ -40,13 +41,18 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
         return;
       }
 
+      // compute the squares this piece can move to
+      const validMoves = computeValidMoves(board, row, col);
+
       setSelected([row, col]);
+      setMoveSquares(validMoves);
       return;
     }
 
     // If clicking the same square -> deselect
     if (selected[0] === row && selected[1] === col) {
       setSelected(null);
+      setMoveSquares([]);
       return;
     }
 
@@ -54,12 +60,14 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
     const tmpBoard = applyMoveIfLegal(board, selected, [row, col], turn);
     if (!tmpBoard) {
       setSelected(null);
+      setMoveSquares([]);
       return;
     }
 
     // looks legal, time to move to the server
     onAttemptMove(selected, [row, col]);
     setSelected(null);
+    setMoveSquares([]);
   };
 
   // helper to know if a square is selected
@@ -75,10 +83,20 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
 
       const piece = board[row][col];
       const isLightSquare = (uiRow + uiCol) % 2 === 0;
-      const bgColor = isLightSquare ? "#d3d3d3" : "#0000FF";
+      const isMoveSquare = moveSquares.some(([r, c]) => r === row && c === col);
+
+      const bgColor = isMoveSquare
+        ? "#50C878"
+        : isLightSquare
+        ? "#d3d3d3"
+        : "#0000ff";
 
       const selectedStyle = isSelected(row, col)
         ? { boxShadow: "inset 0 0 0 3px yellow" }
+        : {};
+
+      const moveSquareShadow = isMoveSquare
+        ? { boxShadow: "inset 0 0 0 3px black" }
         : {};
 
       squares.push(
@@ -92,6 +110,7 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
             position: "relative",
             cursor: "pointer",
             ...selectedStyle,
+            ...moveSquareShadow,
           }}
         >
           {piece && (
