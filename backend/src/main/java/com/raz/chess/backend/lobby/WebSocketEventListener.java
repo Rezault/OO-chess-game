@@ -33,7 +33,7 @@ public class WebSocketEventListener {
             ChatMessage sys = new ChatMessage(
                     ChatMessage.Type.SYSTEM,
                     "SYSTEM",
-                    name + " left the lobby",
+                    name + " left the lobby, game paused",
                     Instant.now().toString()
             );
             messagingTemplate.convertAndSend("/topic/chat", sys);

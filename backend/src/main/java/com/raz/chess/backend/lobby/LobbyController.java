@@ -10,10 +10,12 @@ import org.springframework.stereotype.Controller;
 @Controller
 public class LobbyController {
 	private final LobbyService lobbyService;
+	private final GameService gameService;
 	private final SimpMessagingTemplate messagingTemplate;
 	
-	public LobbyController(LobbyService lobbyService, SimpMessagingTemplate template) {
+	public LobbyController(LobbyService lobbyService, GameService gameService, SimpMessagingTemplate template) {
 		this.lobbyService = lobbyService;
+		this.gameService = gameService;
 		this.messagingTemplate = template;
 	}
 	
@@ -33,6 +35,29 @@ public class LobbyController {
 		
 		System.out.println("Player joined: " + join.getName() + "(session id: " + sessionId + ")");
 		messagingTemplate.convertAndSend("/topic/chat", sys);
+		
+		// check if we need to wait for another player
+		if (state.getPlayer1() != null && state.getPlayer2() != null) {
+			ChatMessage m = new ChatMessage(
+				ChatMessage.Type.SYSTEM, 
+				"SYSTEM", 
+				"Both players joined, game commencing", 
+				Instant.now().toString()
+			);
+			messagingTemplate.convertAndSend("/topic/chat", m);
+			
+			// start game
+			GameState game = gameService.startGame(state);
+			messagingTemplate.convertAndSend("/topic/game", game);
+		} else if (state.getPlayer1() != null || state.getPlayer2() != null) {
+			ChatMessage m = new ChatMessage(
+				ChatMessage.Type.SYSTEM, 
+				"SYSTEM", 
+				"Waiting for second player", 
+				Instant.now().toString()
+			);
+			messagingTemplate.convertAndSend("/topic/chat", m);
+		}
 		
 		return state;
 	}

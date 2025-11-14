@@ -3,12 +3,25 @@ import { initialBoard } from "../game/initialBoard";
 import { pieceImages } from "../game/pieceImages";
 import { applyMoveIfLegal } from "../game/engine";
 
-function ChessBoard({ myColor = "w" }) {
+function ChessBoard({ gameState, myName }) {
   const [board, setBoard] = useState(initialBoard);
   const [selected, setSelected] = useState(null); // [row, col] or null
   const [turn, setTurn] = useState("w"); // "w" or "b"
 
+  // figure out if I am white or black
+  const myColor =
+    gameState && gameState.whitePlayer === myName
+      ? "w"
+      : gameState && gameState.blackPlayer === myName
+      ? "b"
+      : "w"; // default
+
+  const isFlipped = myColor === "b";
+
   const handleSquareClick = (row, col) => {
+    // check if we have a game state and the status is in progress
+    if (!gameState || gameState.status != "IN_PROGRESS") return;
+
     const piece = board[row][col];
 
     // If nothing selected yet
@@ -48,6 +61,52 @@ function ChessBoard({ myColor = "w" }) {
   const isSelected = (row, col) =>
     selected && selected[0] === row && selected[1] === col;
 
+  const squares = [];
+  for (let uiRow = 0; uiRow < 8; uiRow++) {
+    for (let uiCol = 0; uiCol < 8; uiCol++) {
+      // map UI coords -> actual board coords
+      const row = isFlipped ? 7 - uiRow : uiRow;
+      const col = isFlipped ? 7 - uiCol : uiCol;
+
+      const piece = board[row][col];
+      const isLightSquare = (uiRow + uiCol) % 2 === 0;
+      const bgColor = isLightSquare ? "#d3d3d3" : "#0000FF";
+
+      const selectedStyle = isSelected(row, col)
+        ? { boxShadow: "inset 0 0 0 3px yellow" }
+        : {};
+
+      squares.push(
+        <div
+          key={`${uiRow}-${uiCol}`}
+          onClick={() => handleSquareClick(row, col)}
+          style={{
+            width: "60px",
+            height: "60px",
+            backgroundColor: bgColor,
+            position: "relative",
+            cursor: "pointer",
+            ...selectedStyle,
+          }}
+        >
+          {piece && (
+            <img
+              src={pieceImages[piece]}
+              alt={piece}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                userSelect: "none",
+                pointerEvents: "none",
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+  }
+
   return (
     <div
       style={{
@@ -57,6 +116,21 @@ function ChessBoard({ myColor = "w" }) {
         overflow: "hidden",
       }}
     >
+      {/* Top name should always be the opponent */}
+      <div
+        style={{
+          marginTop: "0.5rem",
+          textAlign: "center",
+          fontWeight: "bold",
+        }}
+      >
+        {gameState
+          ? myColor === "w"
+            ? gameState.blackPlayer
+            : gameState.whitePlayer
+          : "PlayerName"}
+      </div>
+
       <div
         style={{
           display: "grid",
@@ -64,45 +138,22 @@ function ChessBoard({ myColor = "w" }) {
           gridTemplateRows: "repeat(8, 60px)",
         }}
       >
-        {board.map((rank, row) =>
-          rank.map((piece, col) => {
-            const isLightSquare = (row + col) % 2 === 0;
-            const bgColor = isLightSquare ? "#d3d3d3" : "#0000FF";
+        {squares}
+      </div>
 
-            const selectedStyle = isSelected(row, col)
-              ? { boxShadow: "inset 0 0 0 3px yellow" }
-              : {};
-
-            return (
-              <div
-                key={`${row}-${col}`}
-                onClick={() => handleSquareClick(row, col)}
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  backgroundColor: bgColor,
-                  position: "relative",
-                  cursor: "pointer",
-                  ...selectedStyle,
-                }}
-              >
-                {piece && (
-                  <img
-                    src={pieceImages[piece]}
-                    alt={piece}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      userSelect: "none",
-                      pointerEvents: "none",
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })
-        )}
+      {/* Bottom name is always me */}
+      <div
+        style={{
+          marginTop: "0.5rem",
+          textAlign: "center",
+          fontWeight: "bold",
+        }}
+      >
+        {gameState
+          ? myColor === "w"
+            ? gameState.whitePlayer
+            : gameState.blackPlayer
+          : "PlayerName"}
       </div>
 
       <div
@@ -112,7 +163,7 @@ function ChessBoard({ myColor = "w" }) {
           fontWeight: "bold",
         }}
       >
-        Turn: {turn === "w" ? "White" : "Black"}
+        Turn: {(gameState && gameState.turn) || ""}
       </div>
     </div>
   );

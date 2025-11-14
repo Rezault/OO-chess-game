@@ -7,7 +7,7 @@ function HomePage() {
 
   const connect = () => {
     console.log(name);
-    navigate(`/lobby?name=${encodeURIComponent(name)}`);
+    navigate(`/game?name=${encodeURIComponent(name)}`);
   };
 
   return (

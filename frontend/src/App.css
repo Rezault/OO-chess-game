@@ -5,6 +5,10 @@
   text-align: center;
 }
 
+body {
+  background: #1b6fc4ff;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -39,4 +43,29 @@
 
 .read-the-docs {
   color: #888;
+}
+
+.game-layout {
+  display: flex;
+  height: 100vh; /* full viewport height */
+  box-sizing: border-box;
+}
+
+/* Left side: board */
+.board-pane {
+  flex: 2; /* take more space than chat */
+  display: flex;
+  justify-content: center; /* center the board horizontally */
+  align-items: center; /* center the board vertically */
+  padding: 30px;
+}
+
+/* Right side: chat */
+.chat-pane {
+  flex: 1; /* narrower than board */
+  border-left: 1px solid #ddd;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
 }
