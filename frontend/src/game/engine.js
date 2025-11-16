@@ -9,26 +9,56 @@ export function applyMoveIfLegal(board, from, to, currentTurn = "w") {
   const [toRow, toCol] = to;
 
   const piece = board[fromRow][fromCol];
-  if (!piece) return null; // no piece to move
+  if (!piece || colorOf(piece) !== currentTurn) return null; // no piece to move or piece is not your colour
 
-  const color = pieceColor(piece);
-  if (color !== currentTurn) return null; // not your turn
-
-  const target = board[toRow][toCol];
-  if (target && pieceColor(target) === color) return null; // can't capture own piece
-
-  // TODO: move validation, custom rules
+  // apply move validation, make sure there's valid moves
+  const validMoves = computeValidMoves(board, fromRow, fromCol);
+  const isLegal = validMoves.some(([r, c]) => r === toRow && c === toCol);
+  if (!isLegal) return null;
 
   // If move is legal, return a new board state with the move applied
-  const newBoard = board.map((row) => row.slice());
-  newBoard[fromRow][fromCol] = EMPTY_SQUARE;
-  newBoard[toRow][toCol] = piece;
+  const newBoard = cloneBoard(board);
+  makeMove(newBoard, fromRow, fromCol, toRow, toCol);
 
   return newBoard;
 }
 
+function cloneBoard(board) {
+  // clone the board to simulate moves
+  return board.map((row) => row.slice());
+}
+
+function makeMove(board, fromRow, fromCol, toRow, toCol) {
+  // make a move on a cloned board for simulation
+  const piece = board[fromRow][fromCol];
+  board[fromRow][fromCol] = EMPTY_SQUARE;
+  board[toRow][toCol] = piece;
+}
+
 const colorOf = (p) => (p ? p[0] : null); // "w" or "b"
 export function computeValidMoves(board, row, col) {
+  const piece = board[row][col];
+  if (!piece) return [];
+
+  // compute raw moves
+  const myColor = colorOf(piece);
+  const rawMoves = computeRawMoves(board, row, col);
+  const valid = [];
+
+  // validate raw moves by simulating them
+  for (const [r, c] of rawMoves) {
+    const newBoard = cloneBoard(board);
+    makeMove(newBoard, row, col, r, c);
+
+    if (!isKingInCheck(newBoard, myColor)) {
+      valid.push([r, c]);
+    }
+  }
+
+  return valid;
+}
+
+function computeRawMoves(board, row, col) {
   const piece = board[row][col];
   if (!piece) return [];
 
@@ -283,3 +313,46 @@ export function computeValidMoves(board, row, col) {
 
   return moves;
 }
+
+function isSquareAttacked(board, row, col, attackerColour) {
+  // loop through all squares and find each piece of attackerColour
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      let piece = board[i][j];
+      if (piece === EMPTY_SQUARE || colorOf(piece) !== attackerColour) continue;
+
+      // compute RAW moves (no checks or special rules)
+      const validMoves = computeRawMoves(board, i, j);
+      for (const [r, c] of validMoves) {
+        if (r === row && col === c) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+export function findKing(board, color) {
+  // loop through all squares and find the king of given colour
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (piece && piece[1] === "k" && colorOf(piece) === color) {
+        return [r, c];
+      }
+    }
+  }
+  return null; // should never happen in a valid game
+}
+
+export function isKingInCheck(board, color) {
+  const kingPos = findKing(board, color);
+  if (!kingPos) return false;
+
+  const [kr, kc] = kingPos;
+  const enemyColor = color === "w" ? "b" : "w";
+  return isSquareAttacked(board, kr, kc, enemyColor);
+}
+

@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { initialBoard } from "../game/initialBoard";
 import { pieceImages } from "../game/pieceImages";
-import { applyMoveIfLegal, computeValidMoves } from "../game/engine";
+import {
+  applyMoveIfLegal,
+  computeValidMoves,
+  isKingInCheck,
+  findKing,
+} from "../game/engine";
 
 function ChessBoard({ gameState, myName, onAttemptMove }) {
   const [selected, setSelected] = useState(null); // [row, col] or null
@@ -19,6 +24,12 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
       : "w"; // default
 
   const isFlipped = myColor === "b";
+
+  // check if king is in check
+  const inCheck = isKingInCheck(board, turn);
+  const kingPos = inCheck ? findKing(board, turn) : null;
+  const kingRow = kingPos ? kingPos[0] : null;
+  const kingCol = kingPos ? kingPos[1] : null;
 
   const handleSquareClick = (row, col) => {
     // check if we have a game state and the status is in progress
@@ -84,12 +95,17 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
       const piece = board[row][col];
       const isLightSquare = (uiRow + uiCol) % 2 === 0;
       const isMoveSquare = moveSquares.some(([r, c]) => r === row && c === col);
+      const isKingSquare = inCheck && row === kingRow && col === kingCol;
 
-      const bgColor = isMoveSquare
+      let bgColor = isMoveSquare
         ? "#50C878"
         : isLightSquare
         ? "#d3d3d3"
         : "#0000ff";
+
+      if (isKingSquare) {
+        bgColor = "#ff4d4f"; // red square for king in check
+      }
 
       const selectedStyle = isSelected(row, col)
         ? { boxShadow: "inset 0 0 0 3px yellow" }
@@ -97,6 +113,10 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
 
       const moveSquareShadow = isMoveSquare
         ? { boxShadow: "inset 0 0 0 3px black" }
+        : {};
+
+      const inCheckShadow = isKingSquare
+        ? { boxShadow: "inset 0 0 0 3px red" }
         : {};
 
       squares.push(
@@ -111,6 +131,7 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
             cursor: "pointer",
             ...selectedStyle,
             ...moveSquareShadow,
+            ...inCheckShadow,
           }}
         >
           {piece && (
