@@ -4,7 +4,9 @@ public class GameState {
 	public enum Status {
 		WAITING_FOR_PLAYERS,
 		IN_PROGRESS,
-		FINISHED
+		FINISHED,
+		CHECKMATE,
+		STALEMATE
 	}
 	
 	private String whitePlayer;

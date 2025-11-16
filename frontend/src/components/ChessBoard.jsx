@@ -6,9 +6,11 @@ import {
   computeValidMoves,
   isKingInCheck,
   findKing,
+  hasAnyLegalMove,
+  getGameStatus,
 } from "../game/engine";
 
-function ChessBoard({ gameState, myName, onAttemptMove }) {
+function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
   const [selected, setSelected] = useState(null); // [row, col] or null
   const [moveSquares, setMoveSquares] = useState([]);
 
@@ -161,6 +163,18 @@ function ChessBoard({ gameState, myName, onAttemptMove }) {
         overflow: "hidden",
       }}
     >
+      {gameStatus === "CHECKMATE" && (
+        <div style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
+          Checkmate!
+        </div>
+      )}
+      {gameStatus === "STALEMATE" && (
+        <div
+          style={{ textAlign: "center", color: "orange", fontWeight: "bold" }}
+        >
+          Stalemate.
+        </div>
+      )}
       {/* top name should always be the opponent */}
       <div
         style={{

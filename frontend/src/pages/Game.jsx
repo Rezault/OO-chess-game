@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ChessBoard from "../components/ChessBoard";
 import Chat from "../components/Chat";
 import { Client } from "@stomp/stompjs";
 import { useLocation } from "react-router-dom";
+import { getGameStatus } from "../game/engine";
 
 function Game() {
   const [client, setClient] = useState(null);
   const [lobby, setLobby] = useState(null);
   const [messages, setMessages] = useState([]);
   const [gameState, setGameState] = useState(null);
+  const [gameStatus, setGameStatus] = useState("NORMAL");
+  const lastStatusRef = useRef("NORMAL");
 
   const query = new URLSearchParams(useLocation().search);
   const name = query.get("name");
@@ -34,6 +37,12 @@ function Game() {
           const gameState = JSON.parse(msg.body);
           console.log("Game state:", gameState);
           setGameState(gameState);
+
+          // update game status (NORMAL, CHECK, etc)
+          const board = gameState.board.grid;
+          const colorToMove = gameState.turn === "WHITE" ? "w" : "b";
+          const status = getGameStatus(board, colorToMove);
+          setGameStatus(status);
         });
 
         // listen for chat updates
@@ -71,20 +80,6 @@ function Game() {
     });
   };
 
-  /*if (lobby) {
-    const { player1, player2 } = lobby;
-    if (player1 && !player2) {
-      status = "Waiting for other player to join...";
-    } else if (!player1 && player2) {
-      status = "Waiting for other player to join...";
-    } else if (player1 && player2) {
-      opponentName = player1 === name ? player2 : player1;
-      status = opponentName
-        ? `You are playing against ${opponentName}`
-        : `Both players successfully connected!`;
-    }
-  }*/
-
   return (
     <div className="game-layout">
       <div className="board-pane">
@@ -105,6 +100,7 @@ function Game() {
               }),
             });
           }}
+          gameStatus={gameStatus}
         />
       </div>
       <div className="board-pane">

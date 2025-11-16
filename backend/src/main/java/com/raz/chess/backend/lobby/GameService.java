@@ -39,12 +39,24 @@ public class GameService {
 		String piece = board.get(fromRow, fromCol);
 		if (piece == null) return null;
 		
-		// TODO: rule checks
+		// move validation. get the current colour to move and apply the new move if legal
+		char colourToMove = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
+		Board newBoard = GameRules.applyMoveIfLegal(board, fromRow, fromCol, toRow, toCol, colourToMove);
 		
-		board.move(fromRow, fromCol, toRow, toCol);
+		if (newBoard == null) {
+			return null;  // illegal move
+		}
+		
+		// set the board of the current game to the new board
+		currentGame.setBoard(newBoard);
 		
 		// change turn
 		currentGame.setTurn(currentGame.getTurn().equals("WHITE") ? "BLACK" : "WHITE");
+		
+		// update game status
+		char nextColor = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
+        GameState.Status status = GameRules.evaluateStatus(newBoard, nextColor);
+        currentGame.setStatus(status);
 		
 		return currentGame;
 	}

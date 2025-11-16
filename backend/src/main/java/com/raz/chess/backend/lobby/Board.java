@@ -25,6 +25,22 @@ public class Board {
 		grid[toRow][toCol] = piece;
 	}
 	
+	public Board copy() {
+		// create a copy of the board for move simulation
+		Board b = new Board(false);
+		for (int i = 0; i < 8; i++) {
+			System.arraycopy(this.grid[i], 0, b.grid[i], 0, 8);
+		}
+		return b;
+	}
+	
+	// private constructor used by copy()
+	private Board(boolean skipInit) {
+		if (!skipInit) {
+			initialise();
+		}
+	}
+	
 	private void initialise() {
 		// black pieces
 		grid[0][0] = "br"; grid[0][1] = "bn"; grid[0][2] = "bb"; grid[0][3] = "bq";

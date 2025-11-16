@@ -1,9 +1,6 @@
 import { createPortal } from "react-dom";
 import { EMPTY_SQUARE } from "./initialBoard";
 
-// piece is like "wp" or "bk"
-const pieceColor = (piece) => (piece ? piece[0] : null); // "w" or "b"
-
 export function applyMoveIfLegal(board, from, to, currentTurn = "w") {
   const [fromRow, fromCol] = from;
   const [toRow, toCol] = to;
@@ -348,6 +345,7 @@ export function findKing(board, color) {
 }
 
 export function isKingInCheck(board, color) {
+  // find the king and see if the square he's on is being attacked
   const kingPos = findKing(board, color);
   if (!kingPos) return false;
 
@@ -356,3 +354,27 @@ export function isKingInCheck(board, color) {
   return isSquareAttacked(board, kr, kc, enemyColor);
 }
 
+// check that we have any legal moves for a player
+export function hasAnyLegalMove(board, color) {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (!piece || colorOf(piece) !== color) continue;
+
+      const moves = computeValidMoves(board, r, c);
+      if (moves.length > 0) return true;
+    }
+  }
+  return false;
+}
+
+// check the game status
+export function getGameStatus(board, colorToMove) {
+  const inCheck = isKingInCheck(board, colorToMove);
+  const hasMove = hasAnyLegalMove(board, colorToMove);
+
+  if (inCheck && !hasMove) return "CHECKMATE";
+  if (!inCheck && !hasMove) return "STALEMATE";
+  if (inCheck) return "CHECK";
+  return "NORMAL";
+}
