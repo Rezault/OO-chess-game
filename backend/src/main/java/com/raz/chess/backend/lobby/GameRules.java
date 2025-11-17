@@ -189,12 +189,13 @@ public class GameRules {
 	    return isSquareAttacked(board, kingPos[0], kingPos[1], enemy);
 	}
 	
-	public static boolean hasAnyLegalMove(Board board, char colour) {
+	public static boolean hasAnyLegalMove(GameState gameState, char colour) {
+		Board board = gameState.getBoard();
 		for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
                 String piece = board.get(r, c);
                 if (piece == null || colourOf(piece) != colour) continue;
-                List<int[]> legal = computeLegalMoves(board, r, c);
+                List<int[]> legal = computeLegalMoves(gameState, r, c);
                 if (!legal.isEmpty()) return true;
             }
         }
@@ -202,7 +203,8 @@ public class GameRules {
 	}
 	
 	// -- LEGAL MOVES -- //
-	public static List<int[]> computeLegalMoves(Board board, int row, int col) {
+	public static List<int[]> computeLegalMoves(GameState gameState, int row, int col) {
+		Board board = gameState.getBoard();
 		String piece = board.get(row, col);
         List<int[]> result = new ArrayList<>();
         if (piece == null) return result;
@@ -223,15 +225,89 @@ public class GameRules {
                 result.add(new int[]{r, c});
             }
         }
+        
+        // If it's a king, add castling squares if allowed
+        if (typeOf(piece) == 'k') {
+            addCastlingMoves(gameState, row, col, color, result);
+        }
+        
         return result;
 	}
 	
-	public static Board applyMoveIfLegal(Board board, int fromRow, int fromCol, int toRow, int toCol, char currentColour) {
+	private static void addCastlingMoves(GameState gameState, int row, int col, char colour, List<int[]> moves) {
+		Board board = gameState.getBoard();
+		boolean isWhite = (colour == 'w');
+		
+		int homeRow = isWhite ? 7 : 0;
+		int kingCol = 4;
+		
+		if (row != homeRow || col != kingCol) {
+			return; // king not on initial square so can't castle
+		}
+		
+		if (isKingInCheck(board, colour)) {
+			return; // king is in check, can't castle
+		}
+		
+		// king side castling
+		boolean canKingSideCastle = isWhite ? gameState.isWhiteKingSideCastle() : gameState.isBlackKingSideCastle();
+		
+		if (canKingSideCastle) {
+			int rookCol = 7;
+			// f file and g file (5 and 6) in between king and rook, gotta check that they're empty and not under attack
+			if (board.get(homeRow, 5) == null && board.get(homeRow, 6) == null) {
+				// check that the rook is where it should be
+				String rook = board.get(homeRow, rookCol);
+				if (rook != null && colourOf(rook) == colour) {
+					if (!isSquareAttacked(board, homeRow, 4, enemyOf(colour)) &&
+			            !isSquareAttacked(board, homeRow, 5, enemyOf(colour)) &&
+			            !isSquareAttacked(board, homeRow, 6, enemyOf(colour))) {
+	
+			            // castling move = king goes to g-file (6)
+			            moves.add(new int[]{homeRow, 6});
+			        }
+				}
+			}
+		}
+		
+		// queen side castling
+		boolean canQueenSide = isWhite
+		            ? gameState.isWhiteQueenSideCastle()
+		            : gameState.isBlackQueenSideCastle();
+
+		if (canQueenSide) {
+			int rookCol = 0;
+		    // squares between: d (3), c (2), b (1)
+		    if (board.get(homeRow, 3) == null &&
+		        board.get(homeRow, 2) == null &&
+		        board.get(homeRow, 1) == null) {
+		    	
+		    	String rook = board.get(homeRow, rookCol);
+		    	if (rook != null && colourOf(rook) == colour) {
+			        // squares king passes: e (4), d (3), c (2)
+			        if (!isSquareAttacked(board, homeRow, 4, enemyOf(colour)) &&
+			            !isSquareAttacked(board, homeRow, 3, enemyOf(colour)) &&
+			            !isSquareAttacked(board, homeRow, 2, enemyOf(colour))) {
+	
+			            // castling move = king goes to c-file (2)
+			            moves.add(new int[]{homeRow, 2});
+			        }
+		    	}
+		    }
+		}
+	}
+	
+	private static char enemyOf(char color) {
+	    return color == 'w' ? 'b' : 'w';
+	}
+	
+	public static Board applyMoveIfLegal(GameState gameState, int fromRow, int fromCol, int toRow, int toCol, char currentColour) {
+		Board board = gameState.getBoard();
 		String piece = board.get(fromRow, fromCol);
         if (piece == null || colourOf(piece) != currentColour) return null;
 
         // compute legal moves and check if this particular move is in that list
-        List<int[]> legalMoves = computeLegalMoves(board, fromRow, fromCol);
+        List<int[]> legalMoves = computeLegalMoves(gameState, fromRow, fromCol);
         boolean isLegal = legalMoves.stream()
                 .anyMatch(mv -> mv[0] == toRow && mv[1] == toCol);
         
@@ -243,12 +319,13 @@ public class GameRules {
         return copy;
 	}
 	
-	public static GameState.Status evaluateStatus(Board board, char colourToMove) {
-		 boolean inCheck = isKingInCheck(board, colourToMove);
-	     boolean hasMove = hasAnyLegalMove(board, colourToMove);
+	public static GameState.Status evaluateStatus(GameState gameState, char colourToMove) {
+		Board board = gameState.getBoard();
+		boolean inCheck = isKingInCheck(board, colourToMove);
+	    boolean hasMove = hasAnyLegalMove(gameState, colourToMove);
 
-	     if (inCheck && !hasMove) return GameState.Status.CHECKMATE;
-	     if (!inCheck && !hasMove) return GameState.Status.STALEMATE;
-	     return GameState.Status.IN_PROGRESS;
+	    if (inCheck && !hasMove) return GameState.Status.CHECKMATE;
+	    if (!inCheck && !hasMove) return GameState.Status.STALEMATE;
+	    return GameState.Status.IN_PROGRESS;
 	}
 }

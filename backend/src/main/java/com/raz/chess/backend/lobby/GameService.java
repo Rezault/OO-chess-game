@@ -39,12 +39,58 @@ public class GameService {
 		String piece = board.get(fromRow, fromCol);
 		if (piece == null) return null;
 		
+		char colour = piece.charAt(0);
+		char type = piece.charAt(1);
+		
 		// move validation. get the current colour to move and apply the new move if legal
 		char colourToMove = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
-		Board newBoard = GameRules.applyMoveIfLegal(board, fromRow, fromCol, toRow, toCol, colourToMove);
+		Board newBoard = GameRules.applyMoveIfLegal(currentGame, fromRow, fromCol, toRow, toCol, colourToMove);
 		
 		if (newBoard == null) {
 			return null;  // illegal move
+		}
+		
+		// check if it was a king or rook move
+		boolean isKingMove = (type == 'k');
+		boolean isRookMove = (type == 'r');
+		
+		// check if it was castle; row remains the same, column changes by 2
+		// can be either queen or king side castling, depends what column we move to
+		if (isKingMove && fromRow == toRow && Math.abs(fromCol - toCol) == 2) {
+			if (toCol == 6) {
+				// king side
+				newBoard.move(fromRow, 7, fromRow, 5);
+			} else if (toCol == 2) {
+				// queen side
+				newBoard.move(fromRow, 0, fromRow, 3);
+			}
+			
+			// update castling rights
+			if (colour == 'w') {
+				currentGame.setWhiteKingSideCastle(false);
+				currentGame.setWhiteQueenSideCastle(false);
+			} else {
+				currentGame.setBlackKingSideCastle(false);
+				currentGame.setBlackQueenSideCastle(false);
+			}
+		} else if (isKingMove) {
+			// normal king move, turn off castling
+			if (colour == 'w') {
+				currentGame.setWhiteKingSideCastle(false);
+				currentGame.setWhiteQueenSideCastle(false);
+			} else {
+				currentGame.setBlackKingSideCastle(false);
+				currentGame.setBlackQueenSideCastle(false);
+			}
+		} else if (isRookMove) {
+			// rook moved, depending which one we must update castling rights
+			if (colour == 'w') {
+				if (fromRow == 7 && fromCol == 7) currentGame.setWhiteKingSideCastle(false);
+				if (fromRow == 7 && fromCol == 0) currentGame.setWhiteQueenSideCastle(false);
+			} else {
+				if (fromRow == 0 && fromCol == 7) currentGame.setBlackKingSideCastle(false);
+				if (fromRow == 0 && fromCol == 0) currentGame.setBlackQueenSideCastle(false);
+			}
 		}
 		
 		// set the board of the current game to the new board
@@ -55,7 +101,7 @@ public class GameService {
 		
 		// update game status
 		char nextColor = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
-        GameState.Status status = GameRules.evaluateStatus(newBoard, nextColor);
+        GameState.Status status = GameRules.evaluateStatus(currentGame, nextColor);
         currentGame.setStatus(status);
 		
 		return currentGame;

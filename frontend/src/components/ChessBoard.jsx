@@ -55,7 +55,7 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
       }
 
       // compute the squares this piece can move to
-      const validMoves = computeValidMoves(board, row, col);
+      const validMoves = computeValidMoves(board, row, col, gameState);
 
       setSelected([row, col]);
       setMoveSquares(validMoves);
@@ -70,7 +70,13 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
     }
 
     // local check
-    const tmpBoard = applyMoveIfLegal(board, selected, [row, col], turn);
+    const tmpBoard = applyMoveIfLegal(
+      board,
+      selected,
+      [row, col],
+      turn,
+      gameState
+    );
     if (!tmpBoard) {
       setSelected(null);
       setMoveSquares([]);

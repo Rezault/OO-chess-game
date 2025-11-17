@@ -15,6 +15,12 @@ public class GameState {
 	private String turn;
 	private Board board;
 	
+	// castling
+	private boolean canCastleKingSideWhite = true;
+	private boolean canCastleQueenSideWhite = true;
+	private boolean canCastleKingSideBlack = true;
+	private boolean canCastleQueenSideBlack = true;
+	
 	public GameState() {}
 	public GameState(String whitePlayer, String blackPlayer, Status status, String turn, Board board) {
 		this.whitePlayer = whitePlayer;
@@ -38,4 +44,16 @@ public class GameState {
     
     public Board getBoard() { return board; }
     public void setBoard(Board board) { this.board = board; }
+    
+    public boolean isWhiteKingSideCastle() { return canCastleKingSideWhite; }
+    public void setWhiteKingSideCastle(boolean v) { this.canCastleKingSideWhite = v; }
+
+    public boolean isWhiteQueenSideCastle() { return canCastleQueenSideWhite; }
+    public void setWhiteQueenSideCastle(boolean v) { this.canCastleQueenSideWhite = v; }
+
+    public boolean isBlackKingSideCastle() { return canCastleKingSideBlack; }
+    public void setBlackKingSideCastle(boolean v) { this.canCastleKingSideBlack = v; }
+
+    public boolean isBlackQueenSideCastle() { return canCastleQueenSideBlack; }
+    public void setBlackQueenSideCastle(boolean v) { this.canCastleQueenSideBlack = v; }
 }

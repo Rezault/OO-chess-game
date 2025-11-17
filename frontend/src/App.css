@@ -48,6 +48,7 @@ body {
 .game-layout {
   display: flex;
   height: 100vh; /* full viewport height */
+  width: 100%;
   box-sizing: border-box;
 }
 

@@ -1,7 +1,10 @@
 import { createPortal } from "react-dom";
 import { EMPTY_SQUARE } from "./initialBoard";
 
-export function applyMoveIfLegal(board, from, to, currentTurn = "w") {
+const colorOf = (p) => (p ? p[0] : null); // "w" or "b"
+const enemyOf = (colour) => (colour === "w" ? "b" : "w");
+
+export function applyMoveIfLegal(board, from, to, currentTurn = "w", gameState) {
   const [fromRow, fromCol] = from;
   const [toRow, toCol] = to;
 
@@ -9,7 +12,7 @@ export function applyMoveIfLegal(board, from, to, currentTurn = "w") {
   if (!piece || colorOf(piece) !== currentTurn) return null; // no piece to move or piece is not your colour
 
   // apply move validation, make sure there's valid moves
-  const validMoves = computeValidMoves(board, fromRow, fromCol);
+  const validMoves = computeValidMoves(board, fromRow, fromCol, gameState);
   const isLegal = validMoves.some(([r, c]) => r === toRow && c === toCol);
   if (!isLegal) return null;
 
@@ -32,13 +35,13 @@ function makeMove(board, fromRow, fromCol, toRow, toCol) {
   board[toRow][toCol] = piece;
 }
 
-const colorOf = (p) => (p ? p[0] : null); // "w" or "b"
-export function computeValidMoves(board, row, col) {
+export function computeValidMoves(board, row, col, gameState) {
   const piece = board[row][col];
   if (!piece) return [];
 
   // compute raw moves
   const myColor = colorOf(piece);
+  const type = piece[1];
   const rawMoves = computeRawMoves(board, row, col);
   const valid = [];
 
@@ -52,7 +55,63 @@ export function computeValidMoves(board, row, col) {
     }
   }
 
+  // if its a king, see if can castle
+  if (type === "k" && gameState) {
+    const castleMoves = computeCastlingMoves(board, row, col, myColor, gameState);
+    for (const mv of castleMoves) {
+      valid.push(mv);
+    }
+  }
+
   return valid;
+}
+
+function computeCastlingMoves(board, row, col, colour, gameState) {
+  const moves = [];
+
+  const isWhite = colour === "w";
+  const homeRow = isWhite ? 7 : 0;
+  const kingCol = 4;
+
+  // king must be on starting square and not in check
+  if (row !== homeRow || col !== kingCol || isKingInCheck(board, colour)) return moves;
+
+  const enemy = enemyOf(colour);
+  // king side
+  const canCastleKingSide = isWhite ? gameState.whiteKingSideCastle : gameState.blackKingSideCastle;
+  if (canCastleKingSide) {
+    // f and g file must be empty (5 and 6)
+    if (!board[homeRow][5] && !board[homeRow][6]) {
+      // squares king passes through: e (4), f (5), g (6) must not be under attack
+      const safe =
+        !isSquareAttacked(board, homeRow, 4, enemy) &&
+        !isSquareAttacked(board, homeRow, 5, enemy) &&
+        !isSquareAttacked(board, homeRow, 6, enemy);
+
+      if (safe) {
+        moves.push([homeRow, 6]);
+      }
+    }
+  }
+
+  // queen side
+  const canCastleQueenSide = isWhite ? gameState.whiteQueenSideCastle : gameState.blackQueenSideCastle;
+  if (canCastleQueenSide) {
+    // d, c, b files must be empty (3,2,1)
+    if (!board[homeRow][3] && !board[homeRow][2] && !board[homeRow][1]) {
+      // squares must be safe
+      const safe =
+        !isSquareAttacked(board, homeRow, 4, enemy) &&
+        !isSquareAttacked(board, homeRow, 3, enemy) &&
+        !isSquareAttacked(board, homeRow, 2, enemy);
+
+      if (safe) {
+        moves.push([homeRow, 2]);
+      }
+    }
+  }
+
+  return moves;
 }
 
 function computeRawMoves(board, row, col) {

@@ -11,7 +11,6 @@ function Game() {
   const [messages, setMessages] = useState([]);
   const [gameState, setGameState] = useState(null);
   const [gameStatus, setGameStatus] = useState("NORMAL");
-  const lastStatusRef = useRef("NORMAL");
 
   const query = new URLSearchParams(useLocation().search);
   const name = query.get("name");
