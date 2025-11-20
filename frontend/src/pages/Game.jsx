@@ -4,6 +4,7 @@ import Chat from "../components/Chat";
 import { Client } from "@stomp/stompjs";
 import { useLocation } from "react-router-dom";
 import { getGameStatus } from "../game/engine";
+import PowerUp from "../components/PowerUp";
 
 function Game() {
   const [client, setClient] = useState(null);
@@ -81,6 +82,7 @@ function Game() {
 
   return (
     <div className="game-layout">
+      <PowerUp gameState={gameState} myName={name} />
       <div className="board-pane">
         <ChessBoard
           gameState={gameState}

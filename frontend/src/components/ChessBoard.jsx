@@ -119,7 +119,17 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
       const row = isFlipped ? 7 - uiRow : uiRow;
       const col = isFlipped ? 7 - uiCol : uiCol;
 
-      const piece = board[row][col];
+      let piece = board[row][col];
+
+      // if we have a powerup on this square, display it
+      if (
+        gameState &&
+        gameState.mysteryBoxRow == row &&
+        gameState.mysteryBoxCol == col
+      ) {
+        piece = "box";
+      }
+
       const isLightSquare = (uiRow + uiCol) % 2 === 0;
       const isMoveSquare = moveSquares.some(([r, c]) => r === row && c === col);
       const isKingSquare = inCheck && row === kingRow && col === kingCol;

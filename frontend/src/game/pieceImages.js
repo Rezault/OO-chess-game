@@ -11,8 +11,7 @@ import bn from "../assets/pieces/bn.png";
 import bb from "../assets/pieces/bb.png";
 import bq from "../assets/pieces/bq.png";
 import bk from "../assets/pieces/bk.png";
-
-import yellowCircle from "../assets/yellowCircle.jpg";
+import box from "../assets/box.png";
 
 export const pieceImages = {
   wp,
@@ -27,5 +26,5 @@ export const pieceImages = {
   bb,
   bq,
   bk,
-  yellowCircle
+  box
 };

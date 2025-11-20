@@ -1,5 +1,7 @@
 package com.raz.chess.backend.lobby;
 
+import java.util.Random;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -110,6 +112,46 @@ public class GameService {
 				if (fromRow == 0 && fromCol == 0) currentGame.setBlackQueenSideCastle(false);
 			}
 		}
+		
+		// check if the current square contains a powerup. if it does, award the player
+		int mysteryBoxRow = currentGame.getMysteryBoxRow();
+		int mysteryBoxCol = currentGame.getMysteryBoxCol();
+		if (mysteryBoxRow == toRow && mysteryBoxCol == toCol) {
+			currentGame.setMysteryBoxRow(-1);
+			currentGame.setMysteryBoxCol(-1);
+			
+			// reset counter for mystery box spawn
+			Random r = new Random();
+			int low = 3;
+			int high = 8;
+			int result = r.nextInt(high-low) + low;
+			currentGame.setMovesUntilMysteryBox(result);
+			
+			if (colour == 'w') {
+				currentGame.setWhitePlayerPowerUp("Test Power");
+			} else {
+				currentGame.setBlackPlayerPowerUp("Test Power");
+			}
+		}
+		
+		// check if we need to spawn mystery box
+		int movesUntilMysteryBox = currentGame.getMovesUntilMysteryBox();
+		if (movesUntilMysteryBox <= 0 && mysteryBoxRow == -1 && mysteryBoxCol == -1) {
+			// get random square and spawn the box
+			int randRow = (int)(Math.random() * 8);
+			int randCol = (int)(Math.random() * 8);
+			
+			while (board.get(randRow, randCol) != null) {
+				randRow = (int)(Math.random() * 8);
+				randCol = (int)(Math.random() * 8);
+			}
+			
+			currentGame.setMysteryBoxRow(randRow);
+			currentGame.setMysteryBoxCol(randCol);
+		}
+		
+		// decrease counter by 1
+		currentGame.setMovesUntilMysteryBox(movesUntilMysteryBox - 1);
 		
 		// set the board of the current game to the new board
 		currentGame.setBoard(newBoard);
