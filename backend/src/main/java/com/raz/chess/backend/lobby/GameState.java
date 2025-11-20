@@ -21,6 +21,10 @@ public class GameState {
 	private boolean canCastleKingSideBlack = true;
 	private boolean canCastleQueenSideBlack = true;
 	
+	// en passant (-1, -1 when none)
+	private int enPassantRow = -1;
+	private int enPassantCol = -1;
+	
 	public GameState() {}
 	public GameState(String whitePlayer, String blackPlayer, Status status, String turn, Board board) {
 		this.whitePlayer = whitePlayer;
@@ -56,4 +60,10 @@ public class GameState {
 
     public boolean isBlackQueenSideCastle() { return canCastleQueenSideBlack; }
     public void setBlackQueenSideCastle(boolean v) { this.canCastleQueenSideBlack = v; }
+    
+    public int getEnPassantRow() { return enPassantRow; }
+    public void setEnPassantRow(int enPassantRow) { this.enPassantRow = enPassantRow; }
+
+    public int getEnPassantCol() { return enPassantCol; }
+    public void setEnPassantCol(int enPassantCol) { this.enPassantCol = enPassantCol; }
 }

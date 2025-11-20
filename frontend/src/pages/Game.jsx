@@ -85,7 +85,7 @@ function Game() {
         <ChessBoard
           gameState={gameState}
           myName={name}
-          onAttemptMove={(from, to) => {
+          onAttemptMove={(from, to, promotion) => {
             if (!client || !client.connected) return;
 
             client.publish({
@@ -96,13 +96,14 @@ function Game() {
                 toRow: to[0],
                 toCol: to[1],
                 player: name,
+                promotion: promotion,
               }),
             });
           }}
           gameStatus={gameStatus}
         />
       </div>
-      <div className="board-pane">
+      <div className="chat-pane">
         <Chat messages={messages} onSend={sendChat} />
       </div>
     </div>

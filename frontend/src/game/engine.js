@@ -42,7 +42,9 @@ export function computeValidMoves(board, row, col, gameState) {
   // compute raw moves
   const myColor = colorOf(piece);
   const type = piece[1];
-  const rawMoves = computeRawMoves(board, row, col);
+  
+  let rawMoves = computeRawMoves(board, row, col);
+
   const valid = [];
 
   // validate raw moves by simulating them
@@ -55,6 +57,22 @@ export function computeValidMoves(board, row, col, gameState) {
     }
   }
 
+  // if en passant, add it
+  if (type === "p") {
+    const enRow = gameState.enPassantRow;
+    const enCol = gameState.enPassantCol;
+    const dir = myColor === "w" ? -1 : 1;
+    if (enRow !== -1 && enCol !== -1) {
+      // check if current pawn is where it should be
+      const c0 = [row, col];
+      const c1 = [enRow-dir, enCol+dir];
+      const c2 = [enRow-dir, enCol-dir];
+      if ((c0[0] === c1[0] && c0[1] === c1[1]) | (c0[0] === c2[0] && c0[1] === c2[1])) {
+        valid.push([enRow, enCol]);
+      }
+    }
+  }
+
   // if its a king, see if can castle
   if (type === "k" && gameState) {
     const castleMoves = computeCastlingMoves(board, row, col, myColor, gameState);
@@ -64,6 +82,10 @@ export function computeValidMoves(board, row, col, gameState) {
   }
 
   return valid;
+}
+
+function computeEnPassantMoves(board, row, col, colour, gameState) {
+  if (!gameState) return [];
 }
 
 function computeCastlingMoves(board, row, col, colour, gameState) {

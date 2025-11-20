@@ -50,6 +50,24 @@ public class GameService {
 			return null;  // illegal move
 		}
 		
+		// handle pawn promotion if applicable
+        if (type == 'p') {
+        	boolean reachedEnd = (colour == 'w' && toRow == 0) || (colour == 'b' && toRow == 7);
+            if (reachedEnd) {
+            	String promotion = validatePromotion(move.getPromotion());
+                newBoard.set(toRow, toCol, "" + colour + promotion);
+            }
+        }
+        
+        // update en passant square
+        currentGame.setEnPassantRow(-1);
+        currentGame.setEnPassantCol(-1);
+        if (type == 'p' && Math.abs(fromRow - toRow) == 2) {
+        	int dir = (colour == 'w') ? -1 : 1;
+        	currentGame.setEnPassantRow(fromRow + dir);
+        	currentGame.setEnPassantCol(fromCol);
+        }
+		
 		// check if it was a king or rook move
 		boolean isKingMove = (type == 'k');
 		boolean isRookMove = (type == 'r');
@@ -106,4 +124,17 @@ public class GameService {
 		
 		return currentGame;
 	}
+	
+	 private String validatePromotion(String promotion) {
+         if (promotion == null || promotion.isBlank()) {
+                 return "q";
+         }
+
+         char type = Character.toLowerCase(promotion.charAt(0));
+         if (type == 'q' || type == 'r' || type == 'b' || type == 'n') {
+                 return String.valueOf(type);
+         }
+
+         return "q";
+	 }
 }

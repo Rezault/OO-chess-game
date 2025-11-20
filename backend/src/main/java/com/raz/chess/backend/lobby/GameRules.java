@@ -85,8 +85,30 @@ public class GameRules {
                 // "control squares" even when empty, add them here
             }
         }
-
-        // TODO: en passant later
+	}
+	
+	private static void addEnPassantMoves(GameState gameState, int row, int col, List<int[]> moves) {
+		// check if we have a target for en passant
+		int targetRow = gameState.getEnPassantRow();
+		int targetCol = gameState.getEnPassantCol();
+		if (targetRow < 0 || targetCol < 0) return;
+		
+		Board board = gameState.getBoard();
+		String piece = board.get(row, col);
+		if (piece == null | typeOf(piece) != 'p') return;
+		
+		char colour = colourOf(piece);
+		int dir = (colour == 'w') ? -1 : 1;
+		
+		// en passant square needs to be one row ahead and one column over
+		// piece must be to the column either to the left or right of the current pawn
+		if (row + dir == targetRow && Math.abs(col - targetCol) == 1) {
+			int capturedRow = targetRow - dir;
+			String captured = board.get(capturedRow, targetCol);
+			if (captured != null && colourOf(captured) != colour && typeOf(captured) == 'p' && board.get(targetRow, targetCol) == EMPTY) {
+				moves.add(new int[]{targetRow, targetCol});
+			}
+		}
 	}
 	
 	private static void computeKnightMoves(Board board, int row, int col, char colour, List<int[]> moves) {
@@ -211,6 +233,9 @@ public class GameRules {
 
         char color = colourOf(piece);
         List<int[]> raw = computeRawMoves(board, row, col, false);
+        if (typeOf(piece) == 'p') {
+        	addEnPassantMoves(gameState, row, col, raw);
+        }
         	
         // loop through all raw moves
         for (int[] move : raw) {
@@ -218,7 +243,13 @@ public class GameRules {
             
             // copy the board and simulate this move
             Board copy = board.copy();
+            boolean isEnPassant = isEnPassantMove(gameState, row, col, r, c);
+            
             copy.move(row, col, r, c);
+            
+            if (isEnPassant) {
+            	removeEnPassantPawn(copy, color, r, c);
+            }
 
             // if the king is safe, add this as a valid move
             if (!isKingInCheck(copy, color)) {
@@ -315,8 +346,37 @@ public class GameRules {
         if (!isLegal) return null;
 
         Board copy = board.copy();
+        boolean isEnPassant = isEnPassantMove(gameState, fromRow, fromCol, toRow, toCol);
         copy.move(fromRow, fromCol, toRow, toCol);
+        if (isEnPassant) {
+        	removeEnPassantPawn(copy, currentColour, toRow, toCol);
+        }
+        
         return copy;
+	}
+	
+	private static boolean isEnPassantMove(GameState gameState, int fromRow, int fromCol, int toRow, int toCol) {
+		Board board = gameState.getBoard();
+		String piece = board.get(fromRow, fromCol);
+		if (piece == null || typeOf(piece) != 'p') {
+            return false;
+        }
+
+        if (gameState.getEnPassantRow() != toRow || gameState.getEnPassantCol() != toCol) {
+            return false;
+        }
+
+        if (board.get(toRow, toCol) != EMPTY) {
+            return false;
+        }
+
+        int dir = colourOf(piece) == 'w' ? -1 : 1;
+        return (toRow - fromRow) == dir && Math.abs(fromCol - toCol) == 1;
+	}
+	
+	private static void removeEnPassantPawn(Board board, char colour, int toRow, int toCol) {
+		int capturedRow = toRow + (colour == 'w' ? 1 : -1);
+        board.set(capturedRow, toCol, null);
 	}
 	
 	public static GameState.Status evaluateStatus(GameState gameState, char colourToMove) {

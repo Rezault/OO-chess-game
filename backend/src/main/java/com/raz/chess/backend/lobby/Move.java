@@ -6,6 +6,7 @@ public class Move {
 	private int toRow;
 	private int toCol;
 	private String player;
+	private String promotion;
 	
 	public Move() {}
 	
@@ -31,4 +32,7 @@ public class Move {
 
     public String getPlayer() { return player; }
     public void setPlayer(String player) { this.player = player; }
+    
+    public String getPromotion() { return promotion; }
+    public void setPromotion(String promotion) { this.promotion = promotion; }
 }

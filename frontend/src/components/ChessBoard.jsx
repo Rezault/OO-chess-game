@@ -33,9 +33,18 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
   const kingRow = kingPos ? kingPos[0] : null;
   const kingCol = kingPos ? kingPos[1] : null;
 
+  const getPromotionChoice = () => {
+    // when pawn reaches end of board
+    // prompt the user what piece they want to promote to
+    let choice = window.prompt("Promote pawn to (q, r, b, n):", "q");
+    if (!choice) return "q";
+    choice = choice.trim().toLowerCase();
+    return ["q", "r", "b", "n"].includes(choice) ? choice : "q";
+  };
+
   const handleSquareClick = (row, col) => {
     // check if we have a game state and the status is in progress
-    if (!gameState || gameState.status != "IN_PROGRESS") return;
+    if (!gameState || gameState.status !== "IN_PROGRESS") return;
 
     const piece = board[row][col];
 
@@ -83,8 +92,18 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
       return;
     }
 
+    // get the piece we moved and check if there's a promotion
+    const movingPiece = board[selected[0]][selected[1]];
+    let promotion = null;
+    if (movingPiece && movingPiece[1] === "p") {
+      const promotionRow = movingPiece[0] === "w" ? 0 : 7;
+      if (row === promotionRow) {
+        promotion = getPromotionChoice();
+      }
+    }
+
     // looks legal, time to move to the server
-    onAttemptMove(selected, [row, col]);
+    onAttemptMove(selected, [row, col], promotion);
     setSelected(null);
     setMoveSquares([]);
   };
@@ -171,14 +190,14 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
     >
       {gameStatus === "CHECKMATE" && (
         <div style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
-          Checkmate!
+          Checkmate! {turn == "w" ? "Black" : "White"} wins!
         </div>
       )}
       {gameStatus === "STALEMATE" && (
         <div
           style={{ textAlign: "center", color: "orange", fontWeight: "bold" }}
         >
-          Stalemate.
+          Stalemate. It's a draw!
         </div>
       )}
       {/* top name should always be the opponent */}
