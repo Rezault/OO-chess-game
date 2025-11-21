@@ -84,10 +84,6 @@ export function computeValidMoves(board, row, col, gameState) {
   return valid;
 }
 
-function computeEnPassantMoves(board, row, col, colour, gameState) {
-  if (!gameState) return [];
-}
-
 function computeCastlingMoves(board, row, col, colour, gameState) {
   const moves = [];
 

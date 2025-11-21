@@ -43,11 +43,11 @@ public class Board {
 	
 	private void initialise() {
 		// black pieces
-		grid[0][0] = "br"; grid[0][1] = "bn"; grid[0][2] = "bb"; grid[0][3] = "bq";
-		grid[0][4] = "bk"; grid[0][5] = "bb"; grid[0][6] = "bn"; grid[0][7] = "br";
+		grid[0][0] = "br1"; grid[0][1] = "bn1"; grid[0][2] = "bb1"; grid[0][3] = "bq";
+		grid[0][4] = "bk"; grid[0][5] = "bb2"; grid[0][6] = "bn2"; grid[0][7] = "br2";
 		
 		for (int col = 0; col < 8; col++) {
-			grid[1][col] = "bp";
+			grid[1][col] = "bp".concat(String.valueOf(col+1));
 		}
 		
 		// empty squares
@@ -59,10 +59,10 @@ public class Board {
 
 	    // white pieces
 	    for (int col = 0; col < 8; col++) {
-	        grid[6][col] = "wp";
+	        grid[6][col] = "wp".concat(String.valueOf(col+1));
 	    }
 
-	    grid[7][0] = "wr"; grid[7][1] = "wn"; grid[7][2] = "wb"; grid[7][3] = "wq";
-	    grid[7][4] = "wk"; grid[7][5] = "wb"; grid[7][6] = "wn"; grid[7][7] = "wr";
+	    grid[7][0] = "wr1"; grid[7][1] = "wn1"; grid[7][2] = "wb1"; grid[7][3] = "wq";
+	    grid[7][4] = "wk"; grid[7][5] = "wb2"; grid[7][6] = "wn2"; grid[7][7] = "wr2";
 	}
 }

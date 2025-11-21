@@ -1,12 +1,12 @@
 export const initialBoard = [
-  ["br", "bn", "bb", "bq", "bk", "bb", "bn", "br"],
-  ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
+  ["br1", "bn1", "bb1", "bq", "bk", "bb2", "bn2", "br2"],
+  ["bp1", "bp2", "bp3", "bp4", "bp5", "bp6", "bp7", "bp8"],
   [null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null],
-  ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
-  ["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"],
+  ["wp1", "wp2", "wp3", "wp4", "wp5", "wp6", "wp7", "wp8"],
+  ["wr1", "wn1", "wb1", "wq", "wk", "wb2", "wn2", "wr2"],
 ];
 
 export const EMPTY_SQUARE = null;

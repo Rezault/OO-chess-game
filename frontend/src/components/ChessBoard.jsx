@@ -9,7 +9,9 @@ import {
   hasAnyLegalMove,
   getGameStatus,
 } from "../game/engine";
+import { motion, AnimatePresence } from "motion/react";
 
+const TILE_SIZE = 60;
 function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
   const [selected, setSelected] = useState(null); // [row, col] or null
   const [moveSquares, setMoveSquares] = useState([]);
@@ -113,21 +115,24 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
     selected && selected[0] === row && selected[1] === col;
 
   const squares = [];
+  const pieces = [];
+
   for (let uiRow = 0; uiRow < 8; uiRow++) {
     for (let uiCol = 0; uiCol < 8; uiCol++) {
       // map UI coords -> actual board coords
       const row = isFlipped ? 7 - uiRow : uiRow;
       const col = isFlipped ? 7 - uiCol : uiCol;
 
-      let piece = board[row][col];
+      let boardPiece = board[row][col];
 
       // if we have a powerup on this square, display it
+      let displayPiece = boardPiece;
       if (
         gameState &&
         gameState.mysteryBoxRow == row &&
         gameState.mysteryBoxCol == col
       ) {
-        piece = "box";
+        displayPiece = "box";
       }
 
       const isLightSquare = (uiRow + uiCol) % 2 === 0;
@@ -158,11 +163,10 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
 
       squares.push(
         <div
-          key={`${uiRow}-${uiCol}`}
+          key={`sq-${uiRow}-${uiCol}`}
           onClick={() => handleSquareClick(row, col)}
+          className="chess-square"
           style={{
-            width: "60px",
-            height: "60px",
             backgroundColor: bgColor,
             position: "relative",
             cursor: "pointer",
@@ -170,22 +174,40 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
             ...moveSquareShadow,
             ...inCheckShadow,
           }}
-        >
-          {piece && (
-            <img
-              src={pieceImages[piece]}
-              alt={piece}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                userSelect: "none",
-                pointerEvents: "none",
-              }}
-            />
-          )}
-        </div>
+        ></div>
       );
+
+      if (displayPiece) {
+        const pieceKey = displayPiece;
+        const baseCode =
+          displayPiece === "box" ? "box" : displayPiece.slice(0, 2);
+
+        // use motion.img for animations
+        pieces.push(
+          <motion.img
+            key={pieceKey}
+            layoutId={pieceKey}
+            src={pieceImages[baseCode]}
+            alt={displayPiece}
+            className="chess-piece"
+            initial={false}
+            animate={{
+              x: uiCol * TILE_SIZE,
+              y: uiRow * TILE_SIZE,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 500,
+              damping: 30,
+              mass: 0.5,
+            }}
+            style={{
+              userSelect: "none",
+              pointerEvents: "none", // click through to squares
+            }}
+          />
+        );
+      }
     }
   }
 
@@ -196,6 +218,7 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
         border: "4px solid #333",
         borderRadius: "8px",
         overflow: "hidden",
+        padding: "0.5rem",
       }}
     >
       {gameStatus === "CHECKMATE" && (
@@ -225,14 +248,12 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
           : "PlayerName"}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(8, 60px)",
-          gridTemplateRows: "repeat(8, 60px)",
-        }}
-      >
-        {squares}
+      {/* chessboard */}
+      <div className="chessboard">
+        <div className="chessboard-grid">{squares}</div>
+        <div className="pieces-layer">
+          <AnimatePresence>{pieces}</AnimatePresence>
+        </div>
       </div>
 
       {/* bottom name is always me */}

@@ -13,6 +13,7 @@ public class GameService {
 		String black = lobby.getPlayer2();
 		
 		currentGame = new GameState(white, black, GameState.Status.IN_PROGRESS, "WHITE", new Board());
+		resetMysteryBoxTime();
 		
 		return currentGame;
 	}
@@ -57,7 +58,11 @@ public class GameService {
         	boolean reachedEnd = (colour == 'w' && toRow == 0) || (colour == 'b' && toRow == 7);
             if (reachedEnd) {
             	String promotion = validatePromotion(move.getPromotion());
-                newBoard.set(toRow, toCol, "" + colour + promotion);
+            	
+            	// in the client we're using motion/react for animations, and each piece needs a unique id
+            	// e.g. if the e pawn (5th pawn) promotes, then we'll just do
+            	// wqp5 (white queen pawn 5) so that we wont have conflicting ids between promotions and existing pieces
+                newBoard.set(toRow, toCol, "" + colour + promotion + type + piece.charAt(2));
             }
         }
         
@@ -113,19 +118,14 @@ public class GameService {
 			}
 		}
 		
-		// check if the current square contains a powerup. if it does, award the player
+		// check if the piece passes through a mystery box. if it does, award the player
 		int mysteryBoxRow = currentGame.getMysteryBoxRow();
 		int mysteryBoxCol = currentGame.getMysteryBoxCol();
-		if (mysteryBoxRow == toRow && mysteryBoxCol == toCol) {
+		if (passedThroughMysteryBox(fromRow, fromCol, toRow, toCol, mysteryBoxRow, mysteryBoxCol)) {
 			currentGame.setMysteryBoxRow(-1);
 			currentGame.setMysteryBoxCol(-1);
 			
-			// reset counter for mystery box spawn
-			Random r = new Random();
-			int low = 3;
-			int high = 8;
-			int result = r.nextInt(high-low) + low;
-			currentGame.setMovesUntilMysteryBox(result);
+			resetMysteryBoxTime();
 			
 			if (colour == 'w') {
 				currentGame.setWhitePlayerPowerUp("Test Power");
@@ -137,17 +137,7 @@ public class GameService {
 		// check if we need to spawn mystery box
 		int movesUntilMysteryBox = currentGame.getMovesUntilMysteryBox();
 		if (movesUntilMysteryBox <= 0 && mysteryBoxRow == -1 && mysteryBoxCol == -1) {
-			// get random square and spawn the box
-			int randRow = (int)(Math.random() * 8);
-			int randCol = (int)(Math.random() * 8);
-			
-			while (board.get(randRow, randCol) != null) {
-				randRow = (int)(Math.random() * 8);
-				randCol = (int)(Math.random() * 8);
-			}
-			
-			currentGame.setMysteryBoxRow(randRow);
-			currentGame.setMysteryBoxCol(randCol);
+			spawnMysteryBox(board);
 		}
 		
 		// decrease counter by 1
@@ -178,5 +168,56 @@ public class GameService {
          }
 
          return "q";
+	 }
+	 
+	 private void resetMysteryBoxTime() {
+		// reset counter for mystery box spawn
+		Random r = new Random();
+		int low = 3;
+		int high = 8;		
+		int result = r.nextInt(high-low) + low;
+		currentGame.setMovesUntilMysteryBox(result);
+	 }
+	 
+	 private void spawnMysteryBox(Board board) {
+		// get random square and spawn the box
+		int randRow = (int)(Math.random() * 8);
+		int randCol = (int)(Math.random() * 8);
+					
+		while (board.get(randRow, randCol) != null) {
+			randRow = (int)(Math.random() * 8);
+			randCol = (int)(Math.random() * 8);
+		}
+					
+		currentGame.setMysteryBoxRow(randRow);
+		currentGame.setMysteryBoxCol(randCol);
+	 }
+	 
+	 private boolean passedThroughMysteryBox(int fromRow, int fromCol, int toRow, int toCol, int boxRow, int boxCol) {
+		if (boxRow < 0 || boxCol < 0) return false;
+		
+		// direction of movement in row/col
+	    int dRow = Integer.compare(toRow, fromRow); // -1, 0, or 1
+	    int dCol = Integer.compare(toCol, fromCol); // -1, 0, or 1
+
+	    int r = fromRow;
+	    int c = fromCol;
+	    
+	    while (true) {
+	        // did we pass over the box?
+	        if (r == boxRow && c == boxCol) {
+	            return true;
+	        }
+
+	        // reached destination: stop
+	        if (r == toRow && c == toCol) {
+	            break;
+	        }
+
+	        r += dRow;
+	        c += dCol;
+	    }
+
+	    return false;
 	 }
 }
