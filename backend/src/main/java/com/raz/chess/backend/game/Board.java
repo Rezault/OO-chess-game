@@ -1,4 +1,4 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.game;
 
 public class Board {
 	private final String[][] grid = new String[8][8];

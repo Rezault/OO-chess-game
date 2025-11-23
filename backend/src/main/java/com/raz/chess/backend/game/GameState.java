@@ -1,4 +1,4 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.game;
 
 public class GameState {
 	public enum Status {
@@ -27,6 +27,16 @@ public class GameState {
 	private int mysteryBoxCol = -1;
 	private String whitePlayerPowerUp = null;
 	private String blackPlayerPowerUp = null;
+	
+	// extra move power up
+	private boolean whiteExtraMove = false;
+	private boolean blackExtraMove = false;
+	
+	// frozen pieces
+	private int whiteFrozenPieceRow = -1;
+	private int whiteFrozenPieceCol = -1;
+	private int blackFrozenPieceRow = -1;
+	private int blackFrozenPieceCol = -1;
 
 	public GameState() {
 	}
@@ -165,5 +175,53 @@ public class GameState {
 
 	public void setBlackPlayerPowerUp(String powerUp) {
 		this.blackPlayerPowerUp = powerUp;
+	}
+	
+	public boolean getWhiteExtraMove() {
+		return whiteExtraMove;
+	}
+	
+	public void setWhiteExtraMove(boolean v) {
+		this.whiteExtraMove = v;
+	}
+	
+	public boolean getBlackExtraMove() {
+		return blackExtraMove;
+	}
+	
+	public void setBlackExtraMove(boolean v) {
+		this.blackExtraMove = v;
+	}
+	
+	public int getWhiteFrozenPieceRow() {
+		return whiteFrozenPieceRow;
+	}
+	
+	public void setWhiteFrozenPieceRow(int v) {
+		this.whiteFrozenPieceRow = v;
+	}
+	
+	public int getWhiteFrozenPieceCol() {
+		return whiteFrozenPieceCol;
+	}
+	
+	public void setWhiteFrozenPieceCol(int v) {
+		this.whiteFrozenPieceCol = v;
+	}
+	
+	public int getBlackFrozenPieceRow() {
+		return blackFrozenPieceRow;
+	}
+	
+	public void setBlackFrozenPieceRow(int v) {
+		this.blackFrozenPieceRow = v;
+	}
+	
+	public int getBlackFrozenPieceCol() {
+		return blackFrozenPieceCol;
+	}
+	
+	public void setBlackFrozenPieceCol(int v) {
+		this.blackFrozenPieceCol = v;
 	}
 }

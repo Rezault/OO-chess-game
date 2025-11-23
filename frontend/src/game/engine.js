@@ -49,6 +49,9 @@ export function computeValidMoves(board, row, col, gameState) {
 
   // validate raw moves by simulating them
   for (const [r, c] of rawMoves) {
+    // cant capture king
+    if (board[r][c] !== EMPTY_SQUARE && board[r][c][1] === "k") continue;
+
     const newBoard = cloneBoard(board);
     makeMove(newBoard, row, col, r, c);
 

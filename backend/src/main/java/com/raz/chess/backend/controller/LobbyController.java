@@ -1,4 +1,4 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.controller;
 
 import java.time.Instant;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -6,6 +6,14 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+
+import com.raz.chess.backend.chat.ChatMessage;
+import com.raz.chess.backend.chat.ChatMessage.Type;
+import com.raz.chess.backend.game.GameService;
+import com.raz.chess.backend.game.GameState;
+import com.raz.chess.backend.lobby.JoinMessage;
+import com.raz.chess.backend.lobby.LobbyService;
+import com.raz.chess.backend.lobby.LobbyState;
 
 @Controller
 public class LobbyController {

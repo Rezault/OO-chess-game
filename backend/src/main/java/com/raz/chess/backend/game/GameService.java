@@ -1,18 +1,50 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.game;
 
+import java.time.Instant;
 import java.util.Random;
+import java.util.UUID;
 
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+
+import com.raz.chess.backend.chat.ChatMessage;
+import com.raz.chess.backend.chat.ChatMessage.Type;
+import com.raz.chess.backend.lobby.LobbyState;
+import com.raz.chess.backend.powerup.PowerUp;
+import com.raz.chess.backend.powerup.PowerUpMessage;
+import com.raz.chess.backend.powerup.PowerUpRegistry;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class GameService {
 	private GameState currentGame;
+	private final SimpMessagingTemplate messagingTemplate;
+	private static final Logger log = LoggerFactory.getLogger(GameService.class);
+	
+	 /**
+     * Used to confirm whether multiple GameService instances are being created at
+     * runtime. In normal operation Spring should keep this bean as a singleton.
+     */
+    private final String instanceId = UUID.randomUUID().toString();
+	
+	// for powerups
+	private final PowerUpRegistry powerUpRegistry;
+	
+	public GameService(SimpMessagingTemplate messagingTemplate, PowerUpRegistry powerUpRegistry) {
+		log.info("GameService instance created: {}", instanceId);
+        this.messagingTemplate = messagingTemplate;
+        this.powerUpRegistry = powerUpRegistry;
+    }
 	
 	public synchronized GameState startGame(LobbyState lobby) {
 		String white = lobby.getPlayer1();
 		String black = lobby.getPlayer2();
 		
 		currentGame = new GameState(white, black, GameState.Status.IN_PROGRESS, "WHITE", new Board());
+		log.info("Starting game for players: white='{}', black='{}' (instance {})", white, black, instanceId);
+		
 		resetMysteryBoxTime();
 		
 		return currentGame;
@@ -23,14 +55,36 @@ public class GameService {
 	}
 	
 	public synchronized GameState applyMove(Move move) {
+		log.info(
+		        "applyMove called. instance={}, currentGame={}, status={}, move={}",
+		        instanceId,
+		        (currentGame == null ? "null" : "exists"),
+		        (currentGame == null ? "N/A" : currentGame.getStatus()),
+		        move
+		    );
+		
 		// check that we have a game and it is in progress
-		if (currentGame == null) return null;
-		if (currentGame.getStatus() != GameState.Status.IN_PROGRESS) return null;
+        if (currentGame == null) {
+                log.warn("applyMove received with no active game. Instance: {}, move: {}", instanceId, move);
+                return null;
+        }
+        if (currentGame.getStatus() != GameState.Status.IN_PROGRESS) {
+                log.warn("applyMove received while game not in progress (status: {}, instance: {})", currentGame.getStatus(), instanceId);
+                return null;
+        }
+		
+		System.out.println("Applying a move");
 		
 		// check if it's the right player's turn
 		String player = move.getPlayer();
 		String expectedPlayer = currentGame.getTurn().equals("WHITE") ? currentGame.getWhitePlayer() : currentGame.getBlackPlayer();
-		if (!expectedPlayer.equals(player)) return null;
+		if (!expectedPlayer.equals(player)) {
+			log.warn("Wrong player trying to move. Expected={}, got={}, turn={}",
+		             expectedPlayer, player, currentGame.getTurn());
+			return null;
+		}
+		
+		System.out.println("Right player's move");
 		
 		Board board = currentGame.getBoard();
 		int fromRow = move.getFromRow();
@@ -42,8 +96,23 @@ public class GameService {
 		String piece = board.get(fromRow, fromCol);
 		if (piece == null) return null;
 		
+		System.out.println("Piece found");
+		
 		char colour = piece.charAt(0);
 		char type = piece.charAt(1);
+		
+		// check that the piece isn't frozen
+		int frozenRow;
+		int frozenCol;
+		if (colour == 'w') {
+			frozenRow = currentGame.getWhiteFrozenPieceRow();
+			frozenCol = currentGame.getWhiteFrozenPieceCol();
+		} else {
+			frozenRow = currentGame.getBlackFrozenPieceRow();
+			frozenCol = currentGame.getBlackFrozenPieceCol();
+		}
+		if (frozenRow == fromRow && frozenCol == fromCol) return null;
+		
 		
 		// move validation. get the current colour to move and apply the new move if legal
 		char colourToMove = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
@@ -52,6 +121,8 @@ public class GameService {
 		if (newBoard == null) {
 			return null;  // illegal move
 		}
+		
+		System.out.println("Legal move");
 		
 		// handle pawn promotion if applicable
         if (type == 'p') {
@@ -128,9 +199,9 @@ public class GameService {
 			resetMysteryBoxTime();
 			
 			if (colour == 'w') {
-				currentGame.setWhitePlayerPowerUp("Test Power");
+				currentGame.setWhitePlayerPowerUp("Freeze Piece");
 			} else {
-				currentGame.setBlackPlayerPowerUp("Test Power");
+				currentGame.setBlackPlayerPowerUp("Freeze Piece");
 			}
 		}
 		
@@ -146,8 +217,28 @@ public class GameService {
 		// set the board of the current game to the new board
 		currentGame.setBoard(newBoard);
 		
-		// change turn
-		currentGame.setTurn(currentGame.getTurn().equals("WHITE") ? "BLACK" : "WHITE");
+		// check if player has an extra move
+		boolean extraMove = colour == 'w' ? currentGame.getWhiteExtraMove() : currentGame.getBlackExtraMove();
+		if (!extraMove) {
+			// change turn
+			boolean isWhite = currentGame.getTurn().equals("WHITE");
+			currentGame.setTurn(isWhite ? "BLACK" : "WHITE");
+			
+			// get rid of any frozen pieces
+			if (isWhite) {
+				// white's turn just ended
+				currentGame.setWhiteFrozenPieceRow(-1);
+				currentGame.setWhiteFrozenPieceCol(-1);
+			} else {
+				// black's turn just ended
+				currentGame.setBlackFrozenPieceRow(-1);
+				currentGame.setBlackFrozenPieceCol(-1);
+			}
+			
+		} else {
+			// disable extra move flag
+			if(colour == 'w') { currentGame.setWhiteExtraMove(false); } else { currentGame.setBlackExtraMove(false); }
+		}
 		
 		// update game status
 		char nextColor = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
@@ -191,10 +282,35 @@ public class GameService {
 					
 		currentGame.setMysteryBoxRow(randRow);
 		currentGame.setMysteryBoxCol(randCol);
+		
+		ChatMessage m = new ChatMessage(
+			ChatMessage.Type.SYSTEM,
+			"SYSTEM",
+		    "A mystery box has spawned!",
+		    Instant.now().toString()
+		);
+
+		messagingTemplate.convertAndSend("/topic/chat", m);
 	 }
 	 
 	 private boolean passedThroughMysteryBox(int fromRow, int fromCol, int toRow, int toCol, int boxRow, int boxCol) {
 		if (boxRow < 0 || boxCol < 0) return false;
+		
+		// If the box is exactly on the starting or ending square, it's collected.
+	    if ((fromRow == boxRow && fromCol == boxCol) ||
+	        (toRow == boxRow && toCol == boxCol)) {
+	        return true;
+	    }
+	    
+	    int rowDiff = toRow - fromRow;
+	    int colDiff = toCol - fromCol;
+
+	    // Only sliding moves (rook/bishop/queen) can pass THROUGH squares.
+	    // Rook: same row or same column.
+	    // Bishop: diagonal (abs diff equal).
+	    if (!(rowDiff == 0 || colDiff == 0 || Math.abs(rowDiff) == Math.abs(colDiff))) {
+	        return false;
+	    }
 		
 		// direction of movement in row/col
 	    int dRow = Integer.compare(toRow, fromRow); // -1, 0, or 1
@@ -203,21 +319,66 @@ public class GameService {
 	    int r = fromRow;
 	    int c = fromCol;
 	    
-	    while (true) {
-	        // did we pass over the box?
+	    while (r != toRow || c != toCol) {
 	        if (r == boxRow && c == boxCol) {
 	            return true;
 	        }
-
-	        // reached destination: stop
-	        if (r == toRow && c == toCol) {
-	            break;
-	        }
-
 	        r += dRow;
 	        c += dCol;
+
+	        // board is 8x8, so at most 7 steps; if something goes wrong, bail.
+	        if (r < 0 || r > 7 || c < 0 || c > 7) {
+	            break;
+	        }
 	    }
 
 	    return false;
+	 }
+	 
+	 // enable power up
+	 public synchronized GameState usePowerUp(PowerUpMessage message) {
+		 if (currentGame == null) return null;
+		 
+		 String playerName = message.getPlayerName();
+
+		 char colour = playerName.equals(currentGame.getWhitePlayer()) ? 'w' : 'b';
+		 char currTurn = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
+		 
+		 // check that it's the current player's turn
+		 if (currTurn != colour) return currentGame; // not the player's turn
+		 
+		 // get the current power up for the player
+		 String playerPowerUp = colour == 'w' ? currentGame.getWhitePlayerPowerUp() : currentGame.getBlackPlayerPowerUp();
+		 if (playerPowerUp == null) return currentGame; // no powerup
+		 
+		 // get the actual power up from the registry
+		 log.info("Finding " + playerPowerUp + " in registry");
+		 PowerUp powerUp = powerUpRegistry.get(playerPowerUp);
+		 if (powerUp == null) return currentGame; // couldn't find power up
+		 
+		 // activate and clear power up
+		 System.out.println("Found, Activating power up");
+		 boolean activated = powerUp.activate(currentGame, message, colour);
+		 if (activated) {
+			 // successfully activated, time to reset the power up for the player
+			 if (colour == 'w') {
+				 currentGame.setWhitePlayerPowerUp(null);
+			 } else {
+				 currentGame.setBlackPlayerPowerUp(null);
+			 }
+		 }
+		 
+		 // send system message that player used a power up
+		 ChatMessage m = new ChatMessage(
+	         ChatMessage.Type.SYSTEM,
+		     "SYSTEM",
+		     playerName + " used power-up: " + powerUp.name(),
+		     Instant.now().toString()
+		 );
+		 
+		 // broadcast that player used powerup
+		 messagingTemplate.convertAndSend("/topic/chat", m);
+		 
+		 return currentGame;
 	 }
 }

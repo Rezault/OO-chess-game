@@ -1,4 +1,4 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.game;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -240,6 +240,10 @@ public class GameRules {
         // loop through all raw moves
         for (int[] move : raw) {
             int r = move[0], c = move[1];
+            
+            // can't capture king
+            String p = board.get(r,c);
+            if (p != EMPTY && p.charAt(1) == 'k') continue;
             
             // copy the board and simulate this move
             Board copy = board.copy();

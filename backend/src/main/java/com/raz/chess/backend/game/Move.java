@@ -1,4 +1,4 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.game;
 
 public class Move {
 	private int fromRow;
@@ -35,4 +35,16 @@ public class Move {
     
     public String getPromotion() { return promotion; }
     public void setPromotion(String promotion) { this.promotion = promotion; }
+    
+    @Override
+    public String toString() {
+        return "Move{" +
+                "fromRow=" + fromRow +
+                ", fromCol=" + fromCol +
+                ", toRow=" + toRow +
+                ", toCol=" + toCol +
+                ", player='" + player + '\'' +
+                ", promotion='" + promotion + '\'' +
+                '}';
+    }
 }

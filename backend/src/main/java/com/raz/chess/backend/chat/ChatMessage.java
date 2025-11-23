@@ -1,4 +1,4 @@
-package com.raz.chess.backend.lobby;
+package com.raz.chess.backend.chat;
 
 public class ChatMessage {
 	 public enum Type {

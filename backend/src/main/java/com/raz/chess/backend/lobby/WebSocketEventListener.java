@@ -7,6 +7,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import com.raz.chess.backend.chat.ChatMessage;
+
 @Component
 public class WebSocketEventListener {
 	private final LobbyService lobbyService;

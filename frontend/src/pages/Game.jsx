@@ -12,6 +12,7 @@ function Game() {
   const [messages, setMessages] = useState([]);
   const [gameState, setGameState] = useState(null);
   const [gameStatus, setGameStatus] = useState("NORMAL");
+  const [choosingPowerUpSquare, setChoosingPowerUpSquare] = useState(false);
 
   const query = new URLSearchParams(useLocation().search);
   const name = query.get("name");
@@ -80,9 +81,31 @@ function Game() {
     });
   };
 
+  const usePowerUp = (r, c) => {
+    if (!client || !client.connected) return;
+    client.publish({
+      destination: "/app/use-powerup",
+      body: JSON.stringify({
+        playerName: name,
+        row: r,
+        col: c,
+      }),
+    });
+  };
+
   return (
     <div className="game-layout">
-      <PowerUp gameState={gameState} myName={name} />
+      <PowerUp
+        gameState={gameState}
+        myName={name}
+        onUsePowerUp={() => {
+          usePowerUp(-1, -1);
+        }}
+        choosePowerUpSquare={(v) => {
+          // allow/disallow the player to choose a square for a power up
+          setChoosingPowerUpSquare(v);
+        }}
+      />
       <div className="board-pane">
         <ChessBoard
           gameState={gameState}
@@ -102,7 +125,12 @@ function Game() {
               }),
             });
           }}
-          gameStatus={gameStatus}
+          choosingPowerUpSquare={choosingPowerUpSquare}
+          receivePowerUpSquare={(r, c) => {
+            // send row/col chosen to server
+            setChoosingPowerUpSquare(false);
+            usePowerUp(r, c);
+          }}
         />
       </div>
       <div className="chat-pane">

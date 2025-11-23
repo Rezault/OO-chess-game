@@ -12,7 +12,13 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 
 const TILE_SIZE = 60;
-function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
+function ChessBoard({
+  gameState,
+  myName,
+  onAttemptMove,
+  choosingPowerUpSquare,
+  receivePowerUpSquare,
+}) {
   const [selected, setSelected] = useState(null); // [row, col] or null
   const [moveSquares, setMoveSquares] = useState([]);
 
@@ -35,6 +41,20 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
   const kingRow = kingPos ? kingPos[0] : null;
   const kingCol = kingPos ? kingPos[1] : null;
 
+  // frozen piece
+  const checkFrozenSquare = (row, col) => {
+    if (!gameState) return false;
+    const frozenRowWhite = gameState.whiteFrozenPieceRow;
+    const frozenColWhite = gameState.whiteFrozenPieceCol;
+    const frozenRowBlack = gameState.blackFrozenPieceRow;
+    const frozenColBlack = gameState.blackFrozenPieceCol;
+
+    return (
+      (frozenRowWhite === row && frozenColWhite === col) ||
+      (frozenRowBlack === row && frozenColBlack === col)
+    );
+  };
+
   const getPromotionChoice = () => {
     // when pawn reaches end of board
     // prompt the user what piece they want to promote to
@@ -50,6 +70,13 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
 
     const piece = board[row][col];
 
+    // check if we're choosing a square for a powerup
+    if (choosingPowerUpSquare) {
+      // return the row and col
+      receivePowerUpSquare(row, col);
+      return;
+    }
+
     // If nothing selected yet
     if (!selected) {
       if (!piece) return; // clicking empty square does nothing
@@ -62,6 +89,11 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
 
       if (pieceColor !== myColor) {
         // cannot choose another player's piece
+        return;
+      }
+
+      // check if the current piece is frozen
+      if (checkFrozenSquare(row, col)) {
         return;
       }
 
@@ -139,8 +171,13 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
       const isMoveSquare = moveSquares.some(([r, c]) => r === row && c === col);
       const isKingSquare = inCheck && row === kingRow && col === kingCol;
 
+      // check for frozen pieces
+      const isFrozenSquare = checkFrozenSquare(row, col);
+
       let bgColor = isMoveSquare
         ? "#50C878"
+        : isFrozenSquare
+        ? "#00FFEF"
         : isLightSquare
         ? "#d3d3d3"
         : "#0000ff";
@@ -211,6 +248,20 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
     }
   }
 
+  // check if we have two turns
+  let currTurn;
+  let gameStatus;
+  if (gameState) {
+    gameStatus = gameState.status;
+    currTurn = gameState.turn;
+    if (
+      (currTurn == "WHITE" && gameState.whiteExtraMove) ||
+      (currTurn == "BLACK" && gameState.blackExtraMove)
+    ) {
+      currTurn += " [TWO TURNS]";
+    }
+  }
+
   return (
     <div
       style={{
@@ -221,6 +272,13 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
         padding: "0.5rem",
       }}
     >
+      {choosingPowerUpSquare && (
+        <div
+          style={{ textAlign: "center", color: "white", fontWeight: "bold" }}
+        >
+          Choose a piece!
+        </div>
+      )}
       {gameStatus === "CHECKMATE" && (
         <div style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
           Checkmate! {turn == "w" ? "Black" : "White"} wins!
@@ -278,7 +336,7 @@ function ChessBoard({ gameState, myName, onAttemptMove, gameStatus }) {
           fontWeight: "bold",
         }}
       >
-        Turn: {(gameState && gameState.turn) || ""}
+        Turn: {currTurn || ""}
       </div>
     </div>
   );
