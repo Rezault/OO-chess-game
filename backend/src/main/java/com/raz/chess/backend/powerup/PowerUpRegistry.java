@@ -11,7 +11,8 @@ public class PowerUpRegistry {
 	public PowerUpRegistry() {
 		powerUps = Map.of(
 			"Extra Move", new ExtraMove(),
-			"Freeze Piece", new FreezePiece()
+			"Freeze Piece", new FreezePiece(),
+			"Evolve Piece", new EvolvePiece()
 		);
 	}
 	

@@ -15,10 +15,11 @@ public class GameRules {
 	}
 	
 	// raw moves
-	private static List<int[]> computeRawMoves(Board board, int row, int col, boolean forAttack) {
+	private static List<int[]> computeRawMoves(GameState gameState, Board board, int row, int col, boolean forAttack) {
 		String piece = board.get(row, col);
 		List<int[]> moves = new ArrayList<>();
 		if (piece == null) return moves;
+		if (gameState == null) return moves;
 		
 		char colour = colourOf(piece);
 		char type = typeOf(piece);
@@ -26,7 +27,20 @@ public class GameRules {
 		// compute moves for each piece type
 		// bishop, rook, queen can all be computed from the same function
 		if (type == 'p') {
-			computePawnMoves(board, row, col, colour, forAttack, moves);
+			// if the pawn is evolved, it moves like a king
+			boolean isEvolved;
+			if(colour == 'w') {
+				isEvolved = gameState.getWhiteEvolvedPieceRow() == row && gameState.getWhiteEvolvedPieceCol() == col;
+			} else {
+				isEvolved = gameState.getBlackEvolvedPieceRow() == row && gameState.getBlackEvolvedPieceCol() == col;
+			}
+			
+			if (isEvolved) {
+				computeKingMoves(board, row, col, colour, moves);
+			} else {
+				// not evolved, compute regular pawn moves
+				computePawnMoves(board, row, col, colour, forAttack, moves);
+			}
 		} else if (type == 'n') {
 			computeKnightMoves(board, row, col, colour, moves);
 		} else if (type == 'b') {
@@ -168,11 +182,10 @@ public class GameRules {
                 moves.add(new int[]{r, c});
             }
 		}
-		// TODO: castling later
 	}
 	
 	// -- ATTACK/CHECK -- //
-	public static boolean isSquareAttacked(Board board, int targetRow, int targetCol, char attackerColour) {
+	public static boolean isSquareAttacked(GameState gameState, Board board, int targetRow, int targetCol, char attackerColour) {
 		// loop through every piece and check if a certain square is being attacked
 		for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
@@ -180,7 +193,7 @@ public class GameRules {
                 if (piece == null || colourOf(piece) != attackerColour) continue;
 
                 // use raw moves from the attacker square
-                List<int[]> rawMoves = computeRawMoves(board, r, c, true);
+                List<int[]> rawMoves = computeRawMoves(gameState, board, r, c, true);
                 for (int[] mv : rawMoves) {
                     if (mv[0] == targetRow && mv[1] == targetCol) {
                         return true;
@@ -204,11 +217,11 @@ public class GameRules {
         return null;
 	}
 	
-	public static boolean isKingInCheck(Board board, char colour) {
+	public static boolean isKingInCheck(GameState gameState, Board board, char colour) {
 		int[] kingPos = findKing(board, colour);
 		if (kingPos == null) return false; // shouldn't happen in a game
 		char enemy = (colour == 'w') ? 'b' : 'w';
-	    return isSquareAttacked(board, kingPos[0], kingPos[1], enemy);
+	    return isSquareAttacked(gameState, board, kingPos[0], kingPos[1], enemy);
 	}
 	
 	public static boolean hasAnyLegalMove(GameState gameState, char colour) {
@@ -232,7 +245,7 @@ public class GameRules {
         if (piece == null) return result;
 
         char color = colourOf(piece);
-        List<int[]> raw = computeRawMoves(board, row, col, false);
+        List<int[]> raw = computeRawMoves(gameState, board, row, col, false);
         if (typeOf(piece) == 'p') {
         	addEnPassantMoves(gameState, row, col, raw);
         }
@@ -256,7 +269,7 @@ public class GameRules {
             }
 
             // if the king is safe, add this as a valid move
-            if (!isKingInCheck(copy, color)) {
+            if (!isKingInCheck(gameState, copy, color)) {
                 result.add(new int[]{r, c});
             }
         }
@@ -280,7 +293,7 @@ public class GameRules {
 			return; // king not on initial square so can't castle
 		}
 		
-		if (isKingInCheck(board, colour)) {
+		if (isKingInCheck(gameState, board, colour)) {
 			return; // king is in check, can't castle
 		}
 		
@@ -294,9 +307,9 @@ public class GameRules {
 				// check that the rook is where it should be
 				String rook = board.get(homeRow, rookCol);
 				if (rook != null && colourOf(rook) == colour) {
-					if (!isSquareAttacked(board, homeRow, 4, enemyOf(colour)) &&
-			            !isSquareAttacked(board, homeRow, 5, enemyOf(colour)) &&
-			            !isSquareAttacked(board, homeRow, 6, enemyOf(colour))) {
+					if (!isSquareAttacked(gameState, board, homeRow, 4, enemyOf(colour)) &&
+			            !isSquareAttacked(gameState, board, homeRow, 5, enemyOf(colour)) &&
+			            !isSquareAttacked(gameState, board, homeRow, 6, enemyOf(colour))) {
 	
 			            // castling move = king goes to g-file (6)
 			            moves.add(new int[]{homeRow, 6});
@@ -320,9 +333,9 @@ public class GameRules {
 		    	String rook = board.get(homeRow, rookCol);
 		    	if (rook != null && colourOf(rook) == colour) {
 			        // squares king passes: e (4), d (3), c (2)
-			        if (!isSquareAttacked(board, homeRow, 4, enemyOf(colour)) &&
-			            !isSquareAttacked(board, homeRow, 3, enemyOf(colour)) &&
-			            !isSquareAttacked(board, homeRow, 2, enemyOf(colour))) {
+			        if (!isSquareAttacked(gameState, board, homeRow, 4, enemyOf(colour)) &&
+			            !isSquareAttacked(gameState, board, homeRow, 3, enemyOf(colour)) &&
+			            !isSquareAttacked(gameState, board, homeRow, 2, enemyOf(colour))) {
 	
 			            // castling move = king goes to c-file (2)
 			            moves.add(new int[]{homeRow, 2});
@@ -350,10 +363,47 @@ public class GameRules {
         if (!isLegal) return null;
 
         Board copy = board.copy();
-        boolean isEnPassant = isEnPassantMove(gameState, fromRow, fromCol, toRow, toCol);
         copy.move(fromRow, fromCol, toRow, toCol);
+        
+        // check if it was en passant
+        boolean isEnPassant = isEnPassantMove(gameState, fromRow, fromCol, toRow, toCol);
         if (isEnPassant) {
         	removeEnPassantPawn(copy, currentColour, toRow, toCol);
+        }
+        
+        // check if it was an evolved piece
+        char type = piece.charAt(1);
+        int eR;
+        int eC;
+        if (currentColour == 'w') {
+        	eR = gameState.getWhiteEvolvedPieceRow();
+        	eC = gameState.getWhiteEvolvedPieceCol();
+        } else {
+        	eR = gameState.getBlackEvolvedPieceRow();
+        	eC = gameState.getBlackEvolvedPieceCol();
+        }
+        
+        if (eR == fromRow && eC == fromCol) {
+        	// need to apply power up
+        	if (type == 'n') {
+        		// AOE power; get rid of everything one square around the knight
+        		int[][] toCheck = {
+        				{-1,-1},{-1,0},{-1,1},
+        				{0,-1},{0,1},
+        				{1,-1},{1,0},{1,1}
+                };
+        		
+        		for (int[] d : toCheck) {
+        			int r = toRow + d[0];
+                    int c = toCol + d[1];
+                    if (!inBounds(r, c)) continue;
+                    String target = board.get(r, c);
+                    // kill everything except king
+                    if (target != EMPTY && target.charAt(1) != 'k') {
+                    	copy.set(r, c, EMPTY);
+                    }
+        		}
+        	}
         }
         
         return copy;
@@ -385,7 +435,7 @@ public class GameRules {
 	
 	public static GameState.Status evaluateStatus(GameState gameState, char colourToMove) {
 		Board board = gameState.getBoard();
-		boolean inCheck = isKingInCheck(board, colourToMove);
+		boolean inCheck = isKingInCheck(gameState, board, colourToMove);
 	    boolean hasMove = hasAnyLegalMove(gameState, colourToMove);
 
 	    if (inCheck && !hasMove) return GameState.Status.CHECKMATE;

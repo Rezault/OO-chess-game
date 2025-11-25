@@ -36,7 +36,7 @@ function ChessBoard({
   const isFlipped = myColor === "b";
 
   // check if king is in check
-  const inCheck = isKingInCheck(board, turn);
+  const inCheck = isKingInCheck(gameState, board, turn);
   const kingPos = inCheck ? findKing(board, turn) : null;
   const kingRow = kingPos ? kingPos[0] : null;
   const kingCol = kingPos ? kingPos[1] : null;
@@ -52,6 +52,20 @@ function ChessBoard({
     return (
       (frozenRowWhite === row && frozenColWhite === col) ||
       (frozenRowBlack === row && frozenColBlack === col)
+    );
+  };
+
+  // evolved piece
+  const checkEvolvedSquare = (row, col) => {
+    if (!gameState) return false;
+    const evolvedRowWhite = gameState.whiteEvolvedPieceRow;
+    const evolvedColWhite = gameState.whiteEvolvedPieceCol;
+    const evolvedRowBlack = gameState.blackEvolvedPieceRow;
+    const evolvedColBlack = gameState.blackEvolvedPieceCol;
+
+    return (
+      (evolvedRowWhite === row && evolvedColWhite === col) ||
+      (evolvedRowBlack === row && evolvedColBlack === col)
     );
   };
 
@@ -174,10 +188,15 @@ function ChessBoard({
       // check for frozen pieces
       const isFrozenSquare = checkFrozenSquare(row, col);
 
+      // check for evolved pieces
+      const isEvolvedSquare = checkEvolvedSquare(row, col);
+
       let bgColor = isMoveSquare
         ? "#50C878"
         : isFrozenSquare
         ? "#00FFEF"
+        : isEvolvedSquare
+        ? "#FFD700"
         : isLightSquare
         ? "#d3d3d3"
         : "#0000ff";

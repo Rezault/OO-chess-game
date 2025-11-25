@@ -199,20 +199,45 @@ public class GameService {
 			resetMysteryBoxTime();
 			
 			if (colour == 'w') {
-				currentGame.setWhitePlayerPowerUp("Freeze Piece");
+				currentGame.setWhitePlayerPowerUp("Evolve Piece");
 			} else {
-				currentGame.setBlackPlayerPowerUp("Freeze Piece");
+				currentGame.setBlackPlayerPowerUp("Evolve Piece");
 			}
 		}
 		
 		// check if we need to spawn mystery box
 		int movesUntilMysteryBox = currentGame.getMovesUntilMysteryBox();
 		if (movesUntilMysteryBox <= 0 && mysteryBoxRow == -1 && mysteryBoxCol == -1) {
-			spawnMysteryBox(board);
+			spawnMysteryBox(newBoard);
 		}
 		
 		// decrease counter by 1
 		currentGame.setMovesUntilMysteryBox(movesUntilMysteryBox - 1);
+		
+		// check if we moved/captured an evolved piece. if it was, reset evolved
+		int rW = currentGame.getWhiteEvolvedPieceRow();
+		int cW = currentGame.getWhiteEvolvedPieceCol();
+		int rB = currentGame.getBlackEvolvedPieceRow();
+		int cB = currentGame.getBlackEvolvedPieceCol();
+		if (colour == 'w') {
+			if (rW == fromRow && cW == fromCol) {
+				currentGame.setWhiteEvolvedPieceRow(-1);
+				currentGame.setWhiteEvolvedPieceCol(-1);
+			}
+			if (rB == toRow && cB == toCol) {
+				currentGame.setBlackEvolvedPieceRow(-1);
+				currentGame.setBlackEvolvedPieceCol(-1);
+			}
+		} else {
+			if (rB == fromRow && cB == fromCol) {
+				currentGame.setBlackEvolvedPieceRow(-1);
+				currentGame.setBlackEvolvedPieceCol(-1);
+			}
+			if (rW == toRow && cW == toCol) {
+				currentGame.setWhiteEvolvedPieceRow(-1);
+				currentGame.setWhiteEvolvedPieceCol(-1);
+			}
+		}
 		
 		// set the board of the current game to the new board
 		currentGame.setBoard(newBoard);

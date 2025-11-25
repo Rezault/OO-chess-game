@@ -37,6 +37,12 @@ public class GameState {
 	private int whiteFrozenPieceCol = -1;
 	private int blackFrozenPieceRow = -1;
 	private int blackFrozenPieceCol = -1;
+	
+	// evolved pieces
+	private int whiteEvolvedPieceRow = -1;
+	private int whiteEvolvedPieceCol = -1;
+	private int blackEvolvedPieceRow = -1;
+	private int blackEvolvedPieceCol = -1;
 
 	public GameState() {
 	}
@@ -223,5 +229,37 @@ public class GameState {
 	
 	public void setBlackFrozenPieceCol(int v) {
 		this.blackFrozenPieceCol = v;
+	}
+	
+	public int getWhiteEvolvedPieceRow() {
+		return whiteEvolvedPieceRow;
+	}
+	
+	public void setWhiteEvolvedPieceRow(int v) {
+		this.whiteEvolvedPieceRow = v;
+	}
+	
+	public int getWhiteEvolvedPieceCol() {
+		return whiteEvolvedPieceCol;
+	}
+	
+	public void setWhiteEvolvedPieceCol(int v) {
+		this.whiteEvolvedPieceCol = v;
+	}
+	
+	public int getBlackEvolvedPieceRow() {
+		return blackEvolvedPieceRow;
+	}
+	
+	public void setBlackEvolvedPieceRow(int v) {
+		this.blackEvolvedPieceRow = v;
+	}
+	
+	public int getBlackEvolvedPieceCol() {
+		return blackEvolvedPieceCol;
+	}
+	
+	public void setBlackEvolvedPieceCol(int v) {
+		this.blackEvolvedPieceCol = v;
 	}
 }

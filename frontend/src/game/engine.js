@@ -8,6 +8,8 @@ export function applyMoveIfLegal(board, from, to, currentTurn = "w", gameState) 
   const [fromRow, fromCol] = from;
   const [toRow, toCol] = to;
 
+  if (!gameState) return;
+
   const piece = board[fromRow][fromCol];
   if (!piece || colorOf(piece) !== currentTurn) return null; // no piece to move or piece is not your colour
 
@@ -43,7 +45,7 @@ export function computeValidMoves(board, row, col, gameState) {
   const myColor = colorOf(piece);
   const type = piece[1];
   
-  let rawMoves = computeRawMoves(board, row, col);
+  let rawMoves = computeRawMoves(board, row, col, gameState);
 
   const valid = [];
 
@@ -55,7 +57,7 @@ export function computeValidMoves(board, row, col, gameState) {
     const newBoard = cloneBoard(board);
     makeMove(newBoard, row, col, r, c);
 
-    if (!isKingInCheck(newBoard, myColor)) {
+    if (!isKingInCheck(gameState, newBoard, myColor)) {
       valid.push([r, c]);
     }
   }
@@ -88,6 +90,7 @@ export function computeValidMoves(board, row, col, gameState) {
 }
 
 function computeCastlingMoves(board, row, col, colour, gameState) {
+  if (!gameState) return [];
   const moves = [];
 
   const isWhite = colour === "w";
@@ -95,7 +98,7 @@ function computeCastlingMoves(board, row, col, colour, gameState) {
   const kingCol = 4;
 
   // king must be on starting square and not in check
-  if (row !== homeRow || col !== kingCol || isKingInCheck(board, colour)) return moves;
+  if (row !== homeRow || col !== kingCol || isKingInCheck(gameState, board, colour)) return moves;
 
   const enemy = enemyOf(colour);
   // king side
@@ -105,9 +108,9 @@ function computeCastlingMoves(board, row, col, colour, gameState) {
     if (!board[homeRow][5] && !board[homeRow][6]) {
       // squares king passes through: e (4), f (5), g (6) must not be under attack
       const safe =
-        !isSquareAttacked(board, homeRow, 4, enemy) &&
-        !isSquareAttacked(board, homeRow, 5, enemy) &&
-        !isSquareAttacked(board, homeRow, 6, enemy);
+        !isSquareAttacked(gameState, board, homeRow, 4, enemy) &&
+        !isSquareAttacked(gameState, board, homeRow, 5, enemy) &&
+        !isSquareAttacked(gameState, board, homeRow, 6, enemy);
 
       if (safe) {
         moves.push([homeRow, 6]);
@@ -122,9 +125,9 @@ function computeCastlingMoves(board, row, col, colour, gameState) {
     if (!board[homeRow][3] && !board[homeRow][2] && !board[homeRow][1]) {
       // squares must be safe
       const safe =
-        !isSquareAttacked(board, homeRow, 4, enemy) &&
-        !isSquareAttacked(board, homeRow, 3, enemy) &&
-        !isSquareAttacked(board, homeRow, 2, enemy);
+        !isSquareAttacked(gameState, board, homeRow, 4, enemy) &&
+        !isSquareAttacked(gameState, board, homeRow, 3, enemy) &&
+        !isSquareAttacked(gameState, board, homeRow, 2, enemy);
 
       if (safe) {
         moves.push([homeRow, 2]);
@@ -135,7 +138,9 @@ function computeCastlingMoves(board, row, col, colour, gameState) {
   return moves;
 }
 
-function computeRawMoves(board, row, col) {
+function computeRawMoves(board, row, col, gameState) {
+  if (!gameState) return [];
+
   const piece = board[row][col];
   if (!piece) return [];
 
@@ -143,9 +148,87 @@ function computeRawMoves(board, row, col) {
 
   const myColor = colorOf(piece);
 
-  // pawn movement
+  // compute movement
+  let mv;
   if (piece[1] === "p") {
+    // check if pawn evolved
+    let isEvolved = false;
     if (myColor === "w") {
+      isEvolved = gameState.whiteEvolvedPieceRow === row && gameState.whiteEvolvedPieceCol == col;
+    } else {
+      isEvolved = gameState.blackEvolvedPieceRow === row && gameState.blackEvolvedPieceCol == col;
+    }
+
+    if (isEvolved) {
+      // pawn moves like a king if evolved
+      mv = computeKingMoves(board, row, col, myColor);
+    } else {
+      mv = computePawnMoves(board, row, col, myColor);
+    }
+  } else if (piece[1] === "n") {
+    mv = computeKnightMoves(board, row, col, myColor);
+  } else if(piece[1] === "b") {
+    const toCheck = [
+      [-1, -1], // up-left
+      [-1, 1], // up-right
+      [1, -1], // down-left
+      [1, 1] // down-right 
+    ];
+    mv = computeSlidingMoves(board, row, col, myColor, toCheck);
+  } else if(piece[1] === "r") {
+    const toCheck = [
+      [-1, 0], // left row
+      [1, 0], // right row
+      [0, -1], // up
+      [0, 1] // down 
+    ];
+    mv = computeSlidingMoves(board, row, col, myColor, toCheck);
+  } else if(piece[1] === "q") {
+     const toCheck = [
+      [-1, -1], // up-left
+      [-1, 1], // up-right
+      [1, -1], // down-left
+      [1, 1], // down-right
+      [-1, 0], // left row
+      [1, 0], // right row
+      [0, -1], // up
+      [0, 1] // down 
+    ];
+    mv = computeSlidingMoves(board, row, col, myColor, toCheck);
+  } else if(piece[1] === "k") {
+    mv = computeKingMoves(board, row, col, myColor);
+  } 
+
+  for (const [r, c] of mv) {
+    moves.push([r,c]);
+  }
+
+  return moves;
+}
+
+function isSquareAttacked(gameState, board, row, col, attackerColour) {
+  // loop through all squares and find each piece of attackerColour
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      let piece = board[i][j];
+      if (piece === EMPTY_SQUARE || colorOf(piece) !== attackerColour) continue;
+
+      // compute RAW moves (no checks or special rules)
+      const validMoves = computeRawMoves(board, i, j, gameState);
+      for (const [r, c] of validMoves) {
+        if (r === row && col === c) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function computePawnMoves(board, row, col, myColor) {
+  let moves = [];
+  if (myColor === "w") {
       // WHITE PAWN
       // forward moves
       if (row === 6) {
@@ -218,12 +301,12 @@ function computeRawMoves(board, row, col) {
       }
     }
 
-    // TODO: promotions + en passant for each color
-  }
+  return moves;
+}
 
-  // KNIGHT
-  if (piece[1] === "n") {
-    // we have 8 cases to check. it's just the L pattern of a knight
+function computeKnightMoves(board, row, col, myColor) {
+  let moves = [];
+  // we have 8 cases to check. it's just the L pattern of a knight
     const toCheck = [
       [-2, -1],
       [-2, 1],
@@ -248,18 +331,12 @@ function computeRawMoves(board, row, col) {
         moves.push([r, c]);
       }
     }
-  }
+  return moves;
+}
 
-  // BISHOP
-  if (piece[1] === "b") {
-    const toCheck = [
-      [-1, -1], // up-left
-      [-1, 1], // up-right
-      [1, -1], // down-left
-      [1, 1] // down-right 
-    ];
-
-    for (const [r1, c1] of toCheck) {
+function computeSlidingMoves(board, row, col, myColor, toCheck) {
+  let moves = [];
+  for (const [r1, c1] of toCheck) {
       let r = row + r1;
       let c = col + c1;
 
@@ -282,85 +359,13 @@ function computeRawMoves(board, row, col) {
         c += c1;
       }
     }
-  }
 
-  // ROOK
-  if (piece[1] === "r") {
-    // just need to check 4 directions
-    const toCheck = [
-      [-1, 0], // left row
-      [1, 0], // right row
-      [0, -1], // up
-      [0, 1] // down 
-    ];
+  return moves;
+}
 
-    for (const [r1, c1] of toCheck) {
-      let r = row + r1;
-      let c = col + c1;
-
-      while (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
-        const target = board[r][c];
-        if (target === EMPTY_SQUARE) {
-          // no piece, we can add to valid moves
-          moves.push([r, c]);
-        } else {
-          // we found a piece, stop searching.
-          // if enemy piece, then we can capture it, so add to the list
-          if (colorOf(target) !== myColor) {
-            moves.push([r, c]);
-          }
-          break;
-        }
-
-        // keep the loop going
-        r += r1;
-        c += c1;
-      }
-    }
-  }
-
-  // QUEEN
-  if (piece[1] === "q") {
-    // combine rook and bishop movement
-    const toCheck = [
-      [-1, -1], // up-left
-      [-1, 1], // up-right
-      [1, -1], // down-left
-      [1, 1], // down-right
-      [-1, 0], // left row
-      [1, 0], // right row
-      [0, -1], // up
-      [0, 1] // down 
-    ];
-
-    for (const [r1, c1] of toCheck) {
-      let r = row + r1;
-      let c = col + c1;
-
-      while (r >= 0 && r <= 7 && c >= 0 && c <= 7) {
-        const target = board[r][c];
-        if (target === EMPTY_SQUARE) {
-          // no piece, we can add to valid moves
-          moves.push([r, c]);
-        } else {
-          // we found a piece, stop searching.
-          // if enemy piece, then we can capture it, so add to the list
-          if (colorOf(target) !== myColor) {
-            moves.push([r, c]);
-          }
-          break;
-        }
-
-        // keep the loop going
-        r += r1;
-        c += c1;
-      }
-    }
-  }
-
-  // KING
-  if (piece[1] === "k") {
-    // king can only move one square on any side
+function computeKingMoves(board, row, col, myColor) {
+  let moves = [];
+  // king can only move one square on any side
     const toCheck = [
       [-1, -1], // up-left
       [-1, 1], // up-right
@@ -385,30 +390,7 @@ function computeRawMoves(board, row, col) {
       }
     }
 
-    // TODO: castling and checks
-  }
-
-  return moves;
-}
-
-function isSquareAttacked(board, row, col, attackerColour) {
-  // loop through all squares and find each piece of attackerColour
-  for (let i = 0; i < 8; i++) {
-    for (let j = 0; j < 8; j++) {
-      let piece = board[i][j];
-      if (piece === EMPTY_SQUARE || colorOf(piece) !== attackerColour) continue;
-
-      // compute RAW moves (no checks or special rules)
-      const validMoves = computeRawMoves(board, i, j);
-      for (const [r, c] of validMoves) {
-        if (r === row && col === c) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
+    return moves;
 }
 
 export function findKing(board, color) {
@@ -424,14 +406,14 @@ export function findKing(board, color) {
   return null; // should never happen in a valid game
 }
 
-export function isKingInCheck(board, color) {
+export function isKingInCheck(gameState, board, color) {
   // find the king and see if the square he's on is being attacked
   const kingPos = findKing(board, color);
   if (!kingPos) return false;
 
   const [kr, kc] = kingPos;
   const enemyColor = color === "w" ? "b" : "w";
-  return isSquareAttacked(board, kr, kc, enemyColor);
+  return isSquareAttacked(gameState, board, kr, kc, enemyColor);
 }
 
 // check that we have any legal moves for a player
@@ -449,8 +431,9 @@ export function hasAnyLegalMove(board, color) {
 }
 
 // check the game status
-export function getGameStatus(board, colorToMove) {
-  const inCheck = isKingInCheck(board, colorToMove);
+export function getGameStatus(gameState, board, colorToMove) {
+  if (!gameState) return "ERROR";
+  const inCheck = isKingInCheck(gameState, board, colorToMove);
   const hasMove = hasAnyLegalMove(board, colorToMove);
 
   if (inCheck && !hasMove) return "CHECKMATE";

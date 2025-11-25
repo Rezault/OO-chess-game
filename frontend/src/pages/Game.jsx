@@ -39,11 +39,13 @@ function Game() {
           console.log("Game state:", gameState);
           setGameState(gameState);
 
-          // update game status (NORMAL, CHECK, etc)
-          const board = gameState.board.grid;
-          const colorToMove = gameState.turn === "WHITE" ? "w" : "b";
-          const status = getGameStatus(board, colorToMove);
-          setGameStatus(status);
+          if (gameState) {
+            // update game status (NORMAL, CHECK, etc)
+            const board = gameState.board.grid;
+            const colorToMove = gameState.turn === "WHITE" ? "w" : "b";
+            const status = getGameStatus(gameState, board, colorToMove);
+            setGameStatus(status);
+          }
         });
 
         // listen for chat updates

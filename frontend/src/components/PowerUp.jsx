@@ -13,6 +13,7 @@ function PowerUp({ gameState, myName, onUsePowerUp, choosePowerUpSquare }) {
       ? gameState.whitePlayerPowerUp
       : gameState.blackPlayerPowerUp
     : "None";
+
   const powerUpArr = powerUp in powerUps ? powerUps[powerUp] : [null, ""];
 
   return (
