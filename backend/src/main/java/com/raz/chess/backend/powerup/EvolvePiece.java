@@ -25,7 +25,8 @@ public class EvolvePiece implements PowerUp {
 	    for (int row = 0; row < 8; row++) {
 	        for (int col = 0; col < 8; col++) {
 	            String piece = board.get(row, col);
-	            if (piece != null && piece.charAt(0) == colour && piece.charAt(1) != 'k' && piece.charAt(1) != 'q') {
+	            // && piece.charAt(1) != 'k' && piece.charAt(1) != 'q'
+	            if (piece != null && piece.charAt(0) == colour && piece.charAt(1) == 'b') {
 	                positions.add(new int[]{row, col});
 	            }
 	        }

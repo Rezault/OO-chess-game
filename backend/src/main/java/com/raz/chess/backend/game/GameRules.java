@@ -363,7 +363,6 @@ public class GameRules {
         if (!isLegal) return null;
 
         Board copy = board.copy();
-        copy.move(fromRow, fromCol, toRow, toCol);
         
         // check if it was en passant
         boolean isEnPassant = isEnPassantMove(gameState, fromRow, fromCol, toRow, toCol);
@@ -384,6 +383,11 @@ public class GameRules {
         }
         
         if (eR == fromRow && eC == fromCol) {
+        	// check it's not a bishop and move
+        	if (type != 'b') {
+        		copy.move(fromRow, fromCol, toRow, toCol);
+        	}
+        
         	// need to apply power up
         	if (type == 'n') {
         		// AOE power; get rid of everything one square around the knight
@@ -403,7 +407,43 @@ public class GameRules {
                     	copy.set(r, c, EMPTY);
                     }
         		}
+        	} else if (type == 'r') {
+        		// check entire row and column we moving to. kill ANY piece there except king
+        		for (int i = 0; i < 8; i++) {
+        			String target1 = board.get(toRow, i); // everything on current row
+        			String target2 = board.get(i, toCol); // everything on current col
+        			
+        			if (target1 != EMPTY && target1.charAt(1) != 'k') {
+        				copy.set(toRow, i, EMPTY);
+        			}
+        			
+        			if (target2 != EMPTY && target2.charAt(1) != 'k') {
+        				copy.set(i, toCol, EMPTY);
+        			}
+        		}
+        	} else if (type == 'b') {
+        		// if target square is empty, just move the bishop
+        		String target = board.get(toRow, toCol);
+        		if (target == EMPTY) {
+        			// move the bishop normally and update the powerup row and col
+        			copy.move(fromRow, fromCol, toRow, toCol);
+        			if (currentColour == 'w') {
+        				gameState.setWhiteEvolvedPieceRow(toRow);
+        				gameState.setWhiteEvolvedPieceCol(toCol);
+        			} else {
+        				gameState.setBlackEvolvedPieceRow(toRow);
+        				gameState.setBlackEvolvedPieceCol(toCol);
+        			}
+        		}
+        		
+        		// otherwise, if there is a target, dont move the bishop; just remove the piece at the end
+        		if (target != EMPTY && colourOf(target) != currentColour && target.charAt(1) != 'k') {
+        			copy.set(toRow, toCol, EMPTY);
+        		}
         	}
+        } else {
+        	// not a powerup piece, just move normally
+        	copy.move(fromRow, fromCol, toRow, toCol);
         }
         
         return copy;

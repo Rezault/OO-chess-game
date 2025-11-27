@@ -417,13 +417,13 @@ export function isKingInCheck(gameState, board, color) {
 }
 
 // check that we have any legal moves for a player
-export function hasAnyLegalMove(board, color) {
+export function hasAnyLegalMove(gameState, board, color) {
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const piece = board[r][c];
       if (!piece || colorOf(piece) !== color) continue;
 
-      const moves = computeValidMoves(board, r, c);
+      const moves = computeValidMoves(board, r, c, gameState);
       if (moves.length > 0) return true;
     }
   }
@@ -434,7 +434,7 @@ export function hasAnyLegalMove(board, color) {
 export function getGameStatus(gameState, board, colorToMove) {
   if (!gameState) return "ERROR";
   const inCheck = isKingInCheck(gameState, board, colorToMove);
-  const hasMove = hasAnyLegalMove(board, colorToMove);
+  const hasMove = hasAnyLegalMove(gameState, board, colorToMove);
 
   if (inCheck && !hasMove) return "CHECKMATE";
   if (!inCheck && !hasMove) return "STALEMATE";

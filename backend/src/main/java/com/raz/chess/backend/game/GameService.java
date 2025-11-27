@@ -198,6 +198,12 @@ public class GameService {
 			
 			resetMysteryBoxTime();
 			
+			// get a random power up. if it is a power down, apply it now.
+			// otherwise, grant the player the power up
+			
+			// TODO: disintegrate
+			
+			
 			if (colour == 'w') {
 				currentGame.setWhitePlayerPowerUp("Evolve Piece");
 			} else {
@@ -237,6 +243,19 @@ public class GameService {
 				currentGame.setWhiteEvolvedPieceRow(-1);
 				currentGame.setWhiteEvolvedPieceCol(-1);
 			}
+		}
+		
+		// set last move information for client effects (if it's an evolved piece)
+		if ((rW == fromRow && cW == fromCol) || (rB == fromRow && cB == fromCol)) {
+			String effectType = type == 'n' ? "KNIGHT_AOE" : type == 'r' ? "ROOK_BLAST" : type == 'b' ? "BISHOP_SNIPER" : "";
+			currentGame.setLastEffectType(effectType);
+			currentGame.setLastEffectRow(toRow);
+			currentGame.setLastEffectCol(toCol);
+			currentGame.setLastEffectSourceRow(fromRow);
+			currentGame.setLastEffectSourceCol(fromCol);
+			currentGame.setLastEffectId(currentGame.getLastEffectId() + 1);
+		} else {
+			currentGame.setLastEffectType("");
 		}
 		
 		// set the board of the current game to the new board
@@ -289,8 +308,9 @@ public class GameService {
 	 private void resetMysteryBoxTime() {
 		// reset counter for mystery box spawn
 		Random r = new Random();
-		int low = 3;
-		int high = 8;		
+		// usually between 3 and 8
+		int low = 1;
+		int high = 2;		
 		int result = r.nextInt(high-low) + low;
 		currentGame.setMovesUntilMysteryBox(result);
 	 }

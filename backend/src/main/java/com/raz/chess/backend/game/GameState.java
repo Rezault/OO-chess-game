@@ -43,6 +43,14 @@ public class GameState {
 	private int whiteEvolvedPieceCol = -1;
 	private int blackEvolvedPieceRow = -1;
 	private int blackEvolvedPieceCol = -1;
+	
+	// for client animation: pass back the last used power up info
+	private String lastEffectType; // "KNIGHT_AOE", "BISHOP_SNIPER", "ROOK_BLAST"
+	private int lastEffectRow; // target row
+	private int lastEffectCol; // target col
+	private int lastEffectSourceRow; // the row the piece was on originally
+	private int lastEffectSourceCol; // the column the piece was on originally
+	private int lastEffectId; // incrementing id so clients know it's new
 
 	public GameState() {
 	}
@@ -261,5 +269,53 @@ public class GameState {
 	
 	public void setBlackEvolvedPieceCol(int v) {
 		this.blackEvolvedPieceCol = v;
+	}
+	
+	public String getLastEffectType() {
+		return lastEffectType;
+	}
+	
+	public void setLastEffectType(String t) {
+		this.lastEffectType = t;
+	}
+	
+	public int getLastEffectRow() {
+		return lastEffectRow;
+	}
+	
+	public void setLastEffectRow(int r) {
+		this.lastEffectRow = r;
+	}
+	
+	public int getLastEffectCol() {
+		return lastEffectCol;
+	}
+	
+	public void setLastEffectCol(int c) {
+		this.lastEffectCol = c;
+	}
+	
+	public int getLastEffectSourceRow() {
+		return lastEffectSourceRow;
+	}
+	
+	public void setLastEffectSourceRow(int r) {
+		this.lastEffectSourceRow = r;
+	}
+	
+	public int getLastEffectSourceCol() {
+		return lastEffectSourceCol;
+	}
+	
+	public void setLastEffectSourceCol(int c) {
+		this.lastEffectSourceCol = c;
+	}
+	
+	public int getLastEffectId() { 
+		return lastEffectId;
+	}
+	
+	public void setLastEffectId(int id) {
+		this.lastEffectId = id;
 	}
 }

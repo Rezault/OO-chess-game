@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { initialBoard } from "../game/initialBoard";
 import { pieceImages } from "../game/pieceImages";
 import {
@@ -21,9 +21,118 @@ function ChessBoard({
 }) {
   const [selected, setSelected] = useState(null); // [row, col] or null
   const [moveSquares, setMoveSquares] = useState([]);
+  const [activeEffect, setActiveEffect] = useState(null);
 
   const board = gameState?.board.grid || initialBoard;
   const turn = gameState?.turn === "WHITE" ? "w" : "b";
+
+  // for powerups
+  const prevBoardRef = useRef(board); // store prev board
+  const lastEffectIdRef = useRef(null);
+  const [ghostPieces, setGhostPieces] = useState([]);
+
+  // check if a square is affected by a knight/rook powerup
+  const isSquareInEffectArea = (effect, row, col) => {
+    if (!effect) return false;
+    const { type, row: er, col: ec } = effect;
+
+    if (type === "KNIGHT_AOE") {
+      // 3x3 around center
+      return Math.abs(row - er) <= 1 && Math.abs(col - ec) <= 1;
+    }
+
+    if (type === "ROOK_BLAST") {
+      // same row or same column as center
+      return row === er || col === ec;
+    }
+
+    if (type === "BISHOP_SNIPER") {
+      // only the target square is considered the effect area
+      return row === er && col === ec;
+    }
+
+    return false;
+  };
+
+  // last effect applied for powerup
+  useEffect(() => {
+    if (!gameState) return;
+
+    const {
+      lastEffectType,
+      lastEffectRow,
+      lastEffectCol,
+      lastEffectSourceRow,
+      lastEffectSourceCol,
+      lastEffectId,
+    } = gameState;
+
+    const prevGrid = prevBoardRef.current;
+    const currGrid = board;
+
+    if (!prevGrid || !currGrid) return;
+
+    if (
+      (lastEffectType === "KNIGHT_AOE" ||
+        lastEffectType === "ROOK_BLAST" ||
+        lastEffectType === "BISHOP_SNIPER") &&
+      lastEffectId != null &&
+      lastEffectId !== lastEffectIdRef.current
+    ) {
+      lastEffectIdRef.current = lastEffectId;
+      // 1) record the effect so we can animate rook/knight + squares
+      const effect = {
+        type: lastEffectType,
+        row: lastEffectRow,
+        col: lastEffectCol,
+        sourceRow: lastEffectSourceRow,
+        sourceCol: lastEffectSourceCol,
+        id: lastEffectId,
+      };
+
+      setActiveEffect(effect);
+
+      // 2) find the victims
+      const victims = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const prevPiece = prevGrid?.[r]?.[c];
+          const newPiece = currGrid[r]?.[c];
+
+          // piece existed before and this square changed
+          if (!prevPiece || prevPiece === newPiece) continue;
+
+          // is this square inside the relevant blast area?
+          if (!isSquareInEffectArea(effect, r, c)) continue;
+
+          // don't ghost kings
+          if (prevPiece[1] === "k") continue;
+
+          victims.push({
+            row: r,
+            col: c,
+            piece: prevPiece,
+          });
+        }
+      }
+
+      setGhostPieces(victims);
+
+      // 3) clear effect + ghosts after animation completes
+      const timer = setTimeout(() => {
+        setActiveEffect(null);
+        setGhostPieces([]);
+      }, 1500); // match knight + explosion timing
+
+      // 4) update previous board snapshot to current
+      prevBoardRef.current = currGrid;
+
+      return () => clearTimeout(timer);
+    }
+
+    // No KNIGHT_AOE effect just keep prevBoard up to date
+    prevBoardRef.current = currGrid;
+  }, [gameState, board]);
 
   // figure out if I am white or black
   const myColor =
@@ -217,6 +326,102 @@ function ChessBoard({
         ? { boxShadow: "inset 0 0 0 3px red" }
         : {};
 
+      // check if it is a blast square
+      const isBlastSquare = isSquareInEffectArea(activeEffect, row, col);
+      const blastSquareShadow = isBlastSquare
+        ? { boxShadow: "inset 0 0 0 3px red" }
+        : {};
+
+      // powerup animations
+      const baseX = uiCol * TILE_SIZE;
+      const baseY = uiRow * TILE_SIZE;
+
+      // check for knight/rook powerup
+      const isSmashPowerup =
+        activeEffect &&
+        (activeEffect.type === "KNIGHT_AOE" ||
+          activeEffect.type === "ROOK_BLAST") &&
+        activeEffect.row === row &&
+        activeEffect.col === col;
+
+      const smashAnimate = isSmashPowerup
+        ? {
+            x: baseX,
+            y: [
+              baseY, // start on square
+              baseY - 40, // jump up
+              baseY - 44, // shake high
+              baseY - 36, // shake high
+              baseY - 42, // shake high
+              baseY + 6, // slam below a bit
+              baseY, // settle back
+            ],
+            scale: [
+              1, // normal
+              2.8, // big as he jumps
+              2.5, // tiny shrink in shake
+              2.9, // bigger again
+              2.7, // shake
+              0.95, // squash on impact
+              1, // back to normal
+            ],
+            rotate: [0, -3, 3, -3, 2, 0, 0],
+          }
+        : {
+            x: baseX,
+            y: baseY,
+            scale: 1,
+          };
+
+      const smashTransition = isSmashPowerup
+        ? {
+            duration: 1.5,
+            times: [0, 0.2, 0.35, 0.5, 0.6, 0.8, 1],
+            easing: "ease-out",
+          }
+        : {
+            type: "spring",
+            stiffness: 500,
+            damping: 30,
+            mass: 0.5,
+          };
+
+      let pieceAnimate = smashAnimate;
+      let pieceTransition = smashTransition;
+
+      // bishop animation
+      if (
+        activeEffect &&
+        activeEffect.type === "BISHOP_SNIPER" &&
+        activeEffect.sourceRow === row &&
+        activeEffect.sourceCol === col
+      ) {
+        const targetBoardRow = activeEffect.row;
+        const targetBoardCol = activeEffect.col;
+
+        // convert target board coords -> UI coords (respect flip)
+        const targetUiRow = isFlipped ? 7 - targetBoardRow : targetBoardRow;
+        const targetUiCol = isFlipped ? 7 - targetBoardCol : targetBoardCol;
+
+        const targetX = targetUiCol * TILE_SIZE;
+        const targetY = targetUiRow * TILE_SIZE;
+
+        pieceAnimate = {
+          x: [baseX, targetX, baseX],
+          y: [baseY, targetY, baseY],
+          scale: [1, 1.5, 1],
+          // optional slight tilt
+          rotate: [0, 10, -5, 0],
+        };
+
+        pieceTransition = {
+          duration: 0.6,
+          ease: "easeInOut",
+          times: [0, 0.6, 1],
+        };
+      }
+
+      // add squares
       squares.push(
         <div
           key={`sq-${uiRow}-${uiCol}`}
@@ -229,8 +434,44 @@ function ChessBoard({
             ...selectedStyle,
             ...moveSquareShadow,
             ...inCheckShadow,
+            ...blastSquareShadow,
           }}
-        ></div>
+        >
+          {isBlastSquare && (
+            <>
+              {/* Bright flash */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{ opacity: [0.8, 0.6, 0], scale: [0.3, 2, 3] }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: 1 }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  background:
+                    "radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,255,0,0.2))",
+                  pointerEvents: "none",
+                  mixBlendMode: "screen",
+                }}
+              />
+
+              {/* Shockwave ring */}
+              <motion.div
+                initial={{ opacity: 1, scale: 0.1 }}
+                animate={{ opacity: 0, scale: 3 }}
+                transition={{ duration: 0.6, ease: "easeOut", delay: 1 }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  border: "6px solid rgba(255, 200, 0, 1)",
+                  filter: "blur(2px)",
+                  pointerEvents: "none",
+                }}
+              />
+            </>
+          )}
+        </div>
       );
 
       if (displayPiece) {
@@ -247,19 +488,12 @@ function ChessBoard({
             alt={displayPiece}
             className="chess-piece"
             initial={false}
-            animate={{
-              x: uiCol * TILE_SIZE,
-              y: uiRow * TILE_SIZE,
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 500,
-              damping: 30,
-              mass: 0.5,
-            }}
+            animate={pieceAnimate}
+            transition={pieceTransition}
             style={{
               userSelect: "none",
               pointerEvents: "none", // click through to squares
+              transformOrigin: "50% 100%", // feels nicer (scale from feet)
             }}
           />
         );
@@ -329,7 +563,41 @@ function ChessBoard({
       <div className="chessboard">
         <div className="chessboard-grid">{squares}</div>
         <div className="pieces-layer">
-          <AnimatePresence>{pieces}</AnimatePresence>
+          <AnimatePresence>
+            {/* ghost victims */}
+            {ghostPieces.map((ghost) => {
+              const { row, col, piece } = ghost;
+
+              // convert board coords -> UI coords (respect flip)
+              const uiRow = isFlipped ? 7 - row : row;
+              const uiCol = isFlipped ? 7 - col : col;
+
+              const x = uiCol * TILE_SIZE;
+              const y = uiRow * TILE_SIZE;
+
+              const baseCode = piece === "box" ? "box" : piece.slice(0, 2); // "wp3" -> "wp"
+
+              return (
+                <motion.img
+                  key={`ghost-${piece}-${row}-${col}`}
+                  src={pieceImages[baseCode]}
+                  alt={piece}
+                  className="chess-piece"
+                  initial={{ x, y, opacity: 1, scale: 1 }}
+                  animate={{ x, y, opacity: 0, scale: 0.3 }}
+                  transition={{ duration: 0.7, ease: "easeOut", delay: 0.8 }}
+                  style={{
+                    userSelect: "none",
+                    pointerEvents: "none",
+                    filter: "drop-shadow(0 0 8px rgba(255,255,255,0.8))",
+                  }}
+                />
+              );
+            })}
+
+            {/* normal pieces */}
+            {pieces}
+          </AnimatePresence>
         </div>
       </div>
 
