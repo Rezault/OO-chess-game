@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import com.raz.chess.backend.chat.ChatMessage;
 import com.raz.chess.backend.chat.ChatMessage.Type;
 import com.raz.chess.backend.lobby.LobbyState;
+import com.raz.chess.backend.powerup.PowerDown;
+import com.raz.chess.backend.powerup.PowerDownMessage;
+import com.raz.chess.backend.powerup.PowerDownRegistry;
 import com.raz.chess.backend.powerup.PowerUp;
 import com.raz.chess.backend.powerup.PowerUpMessage;
 import com.raz.chess.backend.powerup.PowerUpRegistry;
@@ -31,11 +34,13 @@ public class GameService {
 	
 	// for powerups
 	private final PowerUpRegistry powerUpRegistry;
+	private final PowerDownRegistry powerDownRegistry;
 	
-	public GameService(SimpMessagingTemplate messagingTemplate, PowerUpRegistry powerUpRegistry) {
+	public GameService(SimpMessagingTemplate messagingTemplate, PowerUpRegistry powerUpRegistry, PowerDownRegistry powerDownRegistry) {
 		log.info("GameService instance created: {}", instanceId);
         this.messagingTemplate = messagingTemplate;
         this.powerUpRegistry = powerUpRegistry;
+        this.powerDownRegistry = powerDownRegistry;
     }
 	
 	public synchronized GameState startGame(LobbyState lobby) {
@@ -192,6 +197,7 @@ public class GameService {
 		// check if the piece passes through a mystery box. if it does, award the player
 		int mysteryBoxRow = currentGame.getMysteryBoxRow();
 		int mysteryBoxCol = currentGame.getMysteryBoxCol();
+		boolean powerDown = false; // track if we were given a power down
 		if (passedThroughMysteryBox(fromRow, fromCol, toRow, toCol, mysteryBoxRow, mysteryBoxCol)) {
 			currentGame.setMysteryBoxRow(-1);
 			currentGame.setMysteryBoxCol(-1);
@@ -201,14 +207,36 @@ public class GameService {
 			// get a random power up. if it is a power down, apply it now.
 			// otherwise, grant the player the power up
 			
-			// TODO: disintegrate
+			/*// disintegrate
+			powerDown = true;
+			
+			PowerDownMessage msg = new PowerDownMessage();
+			msg.setColour(colour);
+			msg.setFromRow(fromRow);
+			msg.setFromCol(fromCol);
+			msg.setToRow(toRow);
+			msg.setToCol(toCol);
+			
+			usePowerDown("Disintegration", msg, newBoard);*/
+			
+			// betray
+			powerDown = true;
+			
+			PowerDownMessage msg = new PowerDownMessage();
+			msg.setColour(colour);
+			msg.setFromRow(fromRow);
+			msg.setFromCol(fromCol);
+			msg.setToRow(toRow);
+			msg.setToCol(toCol);
+			
+			usePowerDown("Betrayal", msg, newBoard);
 			
 			
-			if (colour == 'w') {
+			/*if (colour == 'w') {
 				currentGame.setWhitePlayerPowerUp("Evolve Piece");
 			} else {
 				currentGame.setBlackPlayerPowerUp("Evolve Piece");
-			}
+			}*/
 		}
 		
 		// check if we need to spawn mystery box
@@ -245,17 +273,20 @@ public class GameService {
 			}
 		}
 		
-		// set last move information for client effects (if it's an evolved piece)
-		if ((rW == fromRow && cW == fromCol) || (rB == fromRow && cB == fromCol)) {
-			String effectType = type == 'n' ? "KNIGHT_AOE" : type == 'r' ? "ROOK_BLAST" : type == 'b' ? "BISHOP_SNIPER" : "";
-			currentGame.setLastEffectType(effectType);
-			currentGame.setLastEffectRow(toRow);
-			currentGame.setLastEffectCol(toCol);
-			currentGame.setLastEffectSourceRow(fromRow);
-			currentGame.setLastEffectSourceCol(fromCol);
-			currentGame.setLastEffectId(currentGame.getLastEffectId() + 1);
-		} else {
-			currentGame.setLastEffectType("");
+		// if we werent given a powerdown, check if an evolved piece moved
+		if (powerDown == false) {
+			// set last move information for client effects (if it's an evolved piece)
+			if ((rW == fromRow && cW == fromCol) || (rB == fromRow && cB == fromCol)) {
+				String effectType = type == 'n' ? "KNIGHT_AOE" : type == 'r' ? "ROOK_BLAST" : type == 'b' ? "BISHOP_SNIPER" : "";
+				currentGame.setLastEffectType(effectType);
+				currentGame.setLastEffectRow(toRow);
+				currentGame.setLastEffectCol(toCol);
+				currentGame.setLastEffectSourceRow(fromRow);
+				currentGame.setLastEffectSourceCol(fromCol);
+				currentGame.setLastEffectId(currentGame.getLastEffectId() + 1);
+			} else {
+				currentGame.setLastEffectType("");
+			}
 		}
 		
 		// set the board of the current game to the new board
@@ -422,6 +453,42 @@ public class GameService {
 		 );
 		 
 		 // broadcast that player used powerup
+		 messagingTemplate.convertAndSend("/topic/chat", m);
+		 
+		 return currentGame;
+	 }
+	 
+	 // enable power down
+	 public synchronized GameState usePowerDown(String powerDownName, PowerDownMessage message, Board board) {
+		 if (currentGame == null) return null;
+
+		 char colour = message.getColour();
+		 
+		 // get the actual power up from the registry
+		 log.info("Finding " + powerDownName + " in registry");
+		 PowerDown powerDown = powerDownRegistry.get(powerDownName);
+		 if (powerDown == null) return currentGame; // couldn't find power down
+		 
+		 // activate and clear power up
+		 System.out.println("Found, Activating power down");
+		 powerDown.activate(currentGame, message, board);
+		 
+		 String playerName;
+		 if (colour == 'w') {
+			 playerName = currentGame.getWhitePlayer();
+		 } else {
+			 playerName = currentGame.getBlackPlayer();
+		 }
+		 
+		 // send system message that player got a power down
+		 ChatMessage m = new ChatMessage(
+	         ChatMessage.Type.SYSTEM,
+		     "SYSTEM",
+		     "Unlucky, " + playerName + "! " + powerDownName,
+		     Instant.now().toString()
+		 );
+		 
+		 // broadcast that player got power down
 		 messagingTemplate.convertAndSend("/topic/chat", m);
 		 
 		 return currentGame;

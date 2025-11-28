@@ -72,6 +72,7 @@ function ChessBoard({
 
     if (!prevGrid || !currGrid) return;
 
+    // evolved powerups
     if (
       (lastEffectType === "KNIGHT_AOE" ||
         lastEffectType === "ROOK_BLAST" ||
@@ -80,7 +81,7 @@ function ChessBoard({
       lastEffectId !== lastEffectIdRef.current
     ) {
       lastEffectIdRef.current = lastEffectId;
-      // 1) record the effect so we can animate rook/knight + squares
+      // record the effect so we can animate rook/knight + squares
       const effect = {
         type: lastEffectType,
         row: lastEffectRow,
@@ -92,7 +93,7 @@ function ChessBoard({
 
       setActiveEffect(effect);
 
-      // 2) find the victims
+      // find the victims
       const victims = [];
       for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
@@ -118,19 +119,45 @@ function ChessBoard({
 
       setGhostPieces(victims);
 
-      // 3) clear effect + ghosts after animation completes
+      // clear effect + ghosts after animation completes
       const timer = setTimeout(() => {
         setActiveEffect(null);
         setGhostPieces([]);
       }, 1500); // match knight + explosion timing
 
-      // 4) update previous board snapshot to current
+      // update previous board snapshot to current
       prevBoardRef.current = currGrid;
 
       return () => clearTimeout(timer);
     }
 
-    // No KNIGHT_AOE effect just keep prevBoard up to date
+    // power downs: check if we disintegrate or switch sides
+    if (lastEffectType === "DISINTEGRATION") {
+      // the piece was originally at board[lastEffectSourceRow][lastEffectSourceCol]
+      const r = lastEffectSourceRow;
+      const c = lastEffectSourceCol;
+
+      const piece = prevGrid[r]?.[c];
+
+      // it disintegrates at [lastEffectRow][lastEffectCol]
+      setActiveEffect("DISINTEGRATE");
+      setGhostPieces([
+        { row: lastEffectRow, col: lastEffectCol, piece: piece },
+      ]);
+
+      // clear effect + ghost after animation completes
+      const timer = setTimeout(() => {
+        setActiveEffect(null);
+        setGhostPieces([]);
+      }, 1500);
+
+      // update previous board snapshot to current
+      prevBoardRef.current = currGrid;
+
+      return () => clearTimeout(timer);
+    }
+
+    // No effect, just keep prevBoard up to date
     prevBoardRef.current = currGrid;
   }, [gameState, board]);
 
