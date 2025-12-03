@@ -25,6 +25,7 @@ public class GameService {
 	private GameState currentGame;
 	private final SimpMessagingTemplate messagingTemplate;
 	private static final Logger log = LoggerFactory.getLogger(GameService.class);
+	private final Random random = new Random();
 	
 	 /**
      * Used to confirm whether multiple GameService instances are being created at
@@ -59,7 +60,7 @@ public class GameService {
 		return currentGame;
 	}
 	
-	public synchronized GameState applyMove(Move move) {
+	public synchronized GameState applyMove(Move move, String playerName) {
 		log.info(
 		        "applyMove called. instance={}, currentGame={}, status={}, move={}",
 		        instanceId,
@@ -81,11 +82,10 @@ public class GameService {
 		System.out.println("Applying a move");
 		
 		// check if it's the right player's turn
-		String player = move.getPlayer();
 		String expectedPlayer = currentGame.getTurn().equals("WHITE") ? currentGame.getWhitePlayer() : currentGame.getBlackPlayer();
-		if (!expectedPlayer.equals(player)) {
+		if (!expectedPlayer.equals(playerName)) {
 			log.warn("Wrong player trying to move. Expected={}, got={}, turn={}",
-		             expectedPlayer, player, currentGame.getTurn());
+		             expectedPlayer, playerName, currentGame.getTurn());
 			return null;
 		}
 		
@@ -204,39 +204,45 @@ public class GameService {
 			
 			resetMysteryBoxTime();
 			
-			// get a random power up. if it is a power down, apply it now.
-			// otherwise, grant the player the power up
-			
-			/*// disintegrate
-			powerDown = true;
-			
-			PowerDownMessage msg = new PowerDownMessage();
-			msg.setColour(colour);
-			msg.setFromRow(fromRow);
-			msg.setFromCol(fromCol);
-			msg.setToRow(toRow);
-			msg.setToCol(toCol);
-			
-			usePowerDown("Disintegration", msg, newBoard);*/
-			
-			// betray
-			powerDown = true;
-			
-			PowerDownMessage msg = new PowerDownMessage();
-			msg.setColour(colour);
-			msg.setFromRow(fromRow);
-			msg.setFromCol(fromCol);
-			msg.setToRow(toRow);
-			msg.setToCol(toCol);
-			
-			usePowerDown("Betrayal", msg, newBoard);
-			
-			
-			/*if (colour == 'w') {
-				currentGame.setWhitePlayerPowerUp("Evolve Piece");
+			// decide between powerup/down
+			// 10% chance for powerdown
+			boolean isPowerDown = random.nextInt(10) == 0; 
+			if (isPowerDown) {
+				// powerdown
+				powerDown = true;
+				String[] powerDowns = { "Betrayal", "Disintegration" };
+				String pdown = powerDowns[random.nextInt(powerDowns.length)];
+				
+				PowerDownMessage msg = new PowerDownMessage();
+				msg.setColour(colour);
+				msg.setFromRow(fromRow);
+				msg.setFromCol(fromCol);
+				msg.setToRow(toRow);
+				msg.setToCol(toCol);
+				
+				usePowerDown(pdown, msg, newBoard);
 			} else {
-				currentGame.setBlackPlayerPowerUp("Evolve Piece");
-			}*/
+				// powerup. give a random one to the player
+				// use very simple system right now. in future, if more powerups, definitely use an enum to scale
+				
+				double roll = random.nextDouble(); // 0.0 - 1.0
+
+				String result;
+				if (roll < 0.50) {
+				    result = "Freeze Piece";            // 50%
+				} else if (roll < 0.80) {
+				    result = "Extra Move";        // next 30%
+				} else {
+				    result = "Evolve Piece";            // remaining 20%
+				}
+				
+				if (colour == 'w') {
+					currentGame.setWhitePlayerPowerUp(result);
+				} else {
+					currentGame.setBlackPlayerPowerUp(result);
+				}
+			}
+
 		}
 		
 		// check if we need to spawn mystery box
@@ -338,11 +344,10 @@ public class GameService {
 	 
 	 private void resetMysteryBoxTime() {
 		// reset counter for mystery box spawn
-		Random r = new Random();
 		// usually between 3 and 8
 		int low = 1;
 		int high = 2;		
-		int result = r.nextInt(high-low) + low;
+		int result = random.nextInt(high-low) + low;
 		currentGame.setMovesUntilMysteryBox(result);
 	 }
 	 
@@ -359,14 +364,14 @@ public class GameService {
 		currentGame.setMysteryBoxRow(randRow);
 		currentGame.setMysteryBoxCol(randCol);
 		
-		ChatMessage m = new ChatMessage(
+		/*ChatMessage m = new ChatMessage(
 			ChatMessage.Type.SYSTEM,
 			"SYSTEM",
 		    "A mystery box has spawned!",
 		    Instant.now().toString()
 		);
 
-		messagingTemplate.convertAndSend("/topic/chat", m);
+		messagingTemplate.convertAndSend("/topic/chat", m);*/
 	 }
 	 
 	 private boolean passedThroughMysteryBox(int fromRow, int fromCol, int toRow, int toCol, int boxRow, int boxCol) {
@@ -412,11 +417,13 @@ public class GameService {
 	 }
 	 
 	 // enable power up
-	 public synchronized GameState usePowerUp(PowerUpMessage message) {
+	 public synchronized GameState usePowerUp(PowerUpMessage message, String playerName) {
 		 if (currentGame == null) return null;
+		 if (playerName == null) return null;
 		 
-		 String playerName = message.getPlayerName();
-
+		 // change the client-sent name to the one found by the server. just incase.
+		 message.setPlayerName(playerName);
+		 
 		 char colour = playerName.equals(currentGame.getWhitePlayer()) ? 'w' : 'b';
 		 char currTurn = currentGame.getTurn().equals("WHITE") ? 'w' : 'b';
 		 
@@ -442,18 +449,18 @@ public class GameService {
 			 } else {
 				 currentGame.setBlackPlayerPowerUp(null);
 			 }
+			 
+			 // send system message that player used a power up
+			 ChatMessage m = new ChatMessage(
+		         ChatMessage.Type.SYSTEM,
+			     "SYSTEM",
+			     playerName + " used power-up: " + powerUp.name(),
+			     Instant.now().toString()
+			 );
+			 
+			 // broadcast that player used powerup
+			 messagingTemplate.convertAndSend("/topic/powerUpUsed", powerUp.name());
 		 }
-		 
-		 // send system message that player used a power up
-		 ChatMessage m = new ChatMessage(
-	         ChatMessage.Type.SYSTEM,
-		     "SYSTEM",
-		     playerName + " used power-up: " + powerUp.name(),
-		     Instant.now().toString()
-		 );
-		 
-		 // broadcast that player used powerup
-		 messagingTemplate.convertAndSend("/topic/chat", m);
 		 
 		 return currentGame;
 	 }
@@ -489,7 +496,7 @@ public class GameService {
 		 );
 		 
 		 // broadcast that player got power down
-		 messagingTemplate.convertAndSend("/topic/chat", m);
+		 messagingTemplate.convertAndSend("/topic/powerUpUsed", powerDownName);
 		 
 		 return currentGame;
 	 }

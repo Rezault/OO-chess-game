@@ -10,6 +10,9 @@ import {
   getGameStatus,
 } from "../game/engine";
 import { motion, AnimatePresence } from "motion/react";
+import Square from "./Square";
+import AnimatedPiece from "./AnimatedPiece";
+import GhostPiece from "./GhostPiece";
 
 const TILE_SIZE = 60;
 function ChessBoard({
@@ -131,8 +134,8 @@ function ChessBoard({
       return () => clearTimeout(timer);
     }
 
-    // power downs: check if we disintegrate or switch sides
-    if (lastEffectType === "DISINTEGRATION") {
+    // power downs: check if we DISINTEGRATION or switch sides
+    if (lastEffectType === "DISINTEGRATION" || lastEffectType === "BETRAYAL") {
       // the piece was originally at board[lastEffectSourceRow][lastEffectSourceCol]
       const r = lastEffectSourceRow;
       const c = lastEffectSourceCol;
@@ -140,9 +143,16 @@ function ChessBoard({
       const piece = prevGrid[r]?.[c];
 
       // it disintegrates at [lastEffectRow][lastEffectCol]
-      setActiveEffect("DISINTEGRATE");
+      setActiveEffect(lastEffectType);
       setGhostPieces([
-        { row: lastEffectRow, col: lastEffectCol, piece: piece },
+        {
+          effect: lastEffectType,
+          fromRow: lastEffectSourceRow,
+          fromCol: lastEffectSourceCol,
+          toRow: lastEffectRow,
+          toCol: lastEffectCol,
+          piece: piece,
+        },
       ]);
 
       // clear effect + ghost after animation completes
@@ -450,55 +460,17 @@ function ChessBoard({
 
       // add squares
       squares.push(
-        <div
+        <Square
           key={`sq-${uiRow}-${uiCol}`}
+          uiRow={uiRow}
+          uiCol={uiCol}
+          bgColor={bgColor}
           onClick={() => handleSquareClick(row, col)}
-          className="chess-square"
-          style={{
-            backgroundColor: bgColor,
-            position: "relative",
-            cursor: "pointer",
-            ...selectedStyle,
-            ...moveSquareShadow,
-            ...inCheckShadow,
-            ...blastSquareShadow,
-          }}
-        >
-          {isBlastSquare && (
-            <>
-              {/* Bright flash */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.3 }}
-                animate={{ opacity: [0.8, 0.6, 0], scale: [0.3, 2, 3] }}
-                transition={{ duration: 0.45, ease: "easeOut", delay: 1 }}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,255,0,0.2))",
-                  pointerEvents: "none",
-                  mixBlendMode: "screen",
-                }}
-              />
-
-              {/* Shockwave ring */}
-              <motion.div
-                initial={{ opacity: 1, scale: 0.1 }}
-                animate={{ opacity: 0, scale: 3 }}
-                transition={{ duration: 0.6, ease: "easeOut", delay: 1 }}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  border: "6px solid rgba(255, 200, 0, 1)",
-                  filter: "blur(2px)",
-                  pointerEvents: "none",
-                }}
-              />
-            </>
-          )}
-        </div>
+          isSelected={isSelected(row, col)}
+          isMoveSquare={isMoveSquare}
+          isKingSquare={isKingSquare}
+          isBlastSquare={isBlastSquare}
+        />
       );
 
       if (displayPiece) {
@@ -508,20 +480,12 @@ function ChessBoard({
 
         // use motion.img for animations
         pieces.push(
-          <motion.img
-            key={pieceKey}
-            layoutId={pieceKey}
-            src={pieceImages[baseCode]}
-            alt={displayPiece}
-            className="chess-piece"
-            initial={false}
+          <AnimatedPiece
+            key={displayPiece}
+            pieceCode={baseCode}
+            displayPiece={displayPiece}
             animate={pieceAnimate}
             transition={pieceTransition}
-            style={{
-              userSelect: "none",
-              pointerEvents: "none", // click through to squares
-              transformOrigin: "50% 100%", // feels nicer (scale from feet)
-            }}
           />
         );
       }
@@ -593,31 +557,13 @@ function ChessBoard({
           <AnimatePresence>
             {/* ghost victims */}
             {ghostPieces.map((ghost) => {
-              const { row, col, piece } = ghost;
-
-              // convert board coords -> UI coords (respect flip)
-              const uiRow = isFlipped ? 7 - row : row;
-              const uiCol = isFlipped ? 7 - col : col;
-
-              const x = uiCol * TILE_SIZE;
-              const y = uiRow * TILE_SIZE;
-
-              const baseCode = piece === "box" ? "box" : piece.slice(0, 2); // "wp3" -> "wp"
-
               return (
-                <motion.img
-                  key={`ghost-${piece}-${row}-${col}`}
-                  src={pieceImages[baseCode]}
-                  alt={piece}
-                  className="chess-piece"
-                  initial={{ x, y, opacity: 1, scale: 1 }}
-                  animate={{ x, y, opacity: 0, scale: 0.3 }}
-                  transition={{ duration: 0.7, ease: "easeOut", delay: 0.8 }}
-                  style={{
-                    userSelect: "none",
-                    pointerEvents: "none",
-                    filter: "drop-shadow(0 0 8px rgba(255,255,255,0.8))",
-                  }}
+                <GhostPiece
+                  key={`ghost-${ghost.effect}-${ghost.piece}-${
+                    ghost.fromRow ?? ghost.row
+                  }-${ghost.fromCol ?? ghost.col}`}
+                  ghost={ghost}
+                  isFlipped={isFlipped}
                 />
               );
             })}

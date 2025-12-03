@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import ChessBoard from "../components/ChessBoard";
 import Chat from "../components/Chat";
 import { Client } from "@stomp/stompjs";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getGameStatus } from "../game/engine";
 import PowerUp from "../components/PowerUp";
+import PowerUpAnnouncement from "../components/PowerUpAnnouncement";
+import GameOverAnnouncement from "../components/GameOverAnnouncement";
 
 function Game() {
   const [client, setClient] = useState(null);
@@ -13,9 +15,13 @@ function Game() {
   const [gameState, setGameState] = useState(null);
   const [gameStatus, setGameStatus] = useState("NORMAL");
   const [choosingPowerUpSquare, setChoosingPowerUpSquare] = useState(false);
+  const [activePowerUpAnnouncement, setActivePowerUpAnnouncement] =
+    useState(null);
 
   const query = new URLSearchParams(useLocation().search);
-  const name = query.get("name");
+  const [name, setName] = useState(query.get("name"));
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const stompClient = new Client({
@@ -48,10 +54,41 @@ function Game() {
           }
         });
 
+        // power ups
+        stompClient.subscribe("/topic/powerUpUsed", (msg) => {
+          const powerUpName = msg.body;
+          console.log(powerUpName);
+          const powerUpTypes = [
+            "Freeze Piece",
+            "Extra Move",
+            "Evolve Piece",
+            "Disintegration",
+            "Betrayal",
+          ];
+
+          if (powerUpName && powerUpTypes.includes(powerUpName)) {
+            setActivePowerUpAnnouncement({
+              type: powerUpName,
+            });
+          }
+        });
+
         // listen for chat updates
         stompClient.subscribe("/topic/chat", (msg) => {
           const chat = JSON.parse(msg.body);
           setMessages((prev) => [...prev, chat]);
+        });
+
+        stompClient.subscribe("/user/queue/private", (msg) => {
+          console.log("private msg");
+          const data = JSON.parse(msg.body);
+          setMessages((prev) => [...prev, data]);
+
+          if (data.type === "SYSTEM" && data.content.includes("now:")) {
+            const newName = data.content.split("now: ")[1].trim();
+            console.log(newName);
+            setName(newName);
+          }
         });
 
         // tell server we joined
@@ -138,6 +175,29 @@ function Game() {
       <div className="chat-pane">
         <Chat messages={messages} onSend={sendChat} />
       </div>
+
+      <PowerUpAnnouncement
+        powerUp={activePowerUpAnnouncement}
+        onClose={() => setActivePowerUpAnnouncement(null)}
+      />
+
+      <GameOverAnnouncement
+        result={
+          gameStatus === "CHECKMATE"
+            ? "CHECKMATE"
+            : gameStatus === "STALEMATE"
+            ? "STALEMATE"
+            : null
+        }
+        winner={
+          gameStatus === "CHECKMATE"
+            ? gameState?.turn === "WHITE"
+              ? "Black" // white was in checkmate
+              : "White"
+            : null
+        }
+        onHome={() => navigate("/")}
+      />
     </div>
   );
 }
