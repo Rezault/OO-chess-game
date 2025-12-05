@@ -344,9 +344,8 @@ public class GameService {
 	 
 	 private void resetMysteryBoxTime() {
 		// reset counter for mystery box spawn
-		// usually between 3 and 8
-		int low = 1;
-		int high = 2;		
+		int low = 3;
+		int high = 8;		
 		int result = random.nextInt(high-low) + low;
 		currentGame.setMovesUntilMysteryBox(result);
 	 }
