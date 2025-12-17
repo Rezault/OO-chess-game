@@ -207,7 +207,7 @@ public class GameService {
 			// decide between powerup/down
 			// 10% chance for powerdown
 			boolean isPowerDown = random.nextInt(10) == 0; 
-			if (isPowerDown) {
+			if (isPowerDown && !isKingMove) {
 				// powerdown
 				powerDown = true;
 				String[] powerDowns = { "Betrayal", "Disintegration" };
