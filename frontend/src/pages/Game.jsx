@@ -9,7 +9,7 @@ import GameOverAnnouncement from "../components/GameOverAnnouncement";
 
 import { WS_URL } from "../config";
 import { Client } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
+import SockJS from "sockjs-client/dist/sockjs";
 
 function Game() {
   const [client, setClient] = useState(null);
@@ -30,7 +30,7 @@ function Game() {
     const stompClient = new Client({
       //brokerURL: "ws://localhost:8080/ws/websocket",
       //brokerURL: WS_URL,
-      webSocketFactory: () => new SockJS(WS_URL),
+      webSocketFactory: () => new SockJS("WS_URL"),
       reconnectDelay: 5000,
       debug: (str) => console.log(str),
 
