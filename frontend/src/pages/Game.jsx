@@ -8,6 +8,8 @@ import PowerUp from "../components/PowerUp";
 import PowerUpAnnouncement from "../components/PowerUpAnnouncement";
 import GameOverAnnouncement from "../components/GameOverAnnouncement";
 
+import { WS_URL } from "../config";
+
 function Game() {
   const [client, setClient] = useState(null);
   const [lobby, setLobby] = useState(null);
@@ -25,7 +27,8 @@ function Game() {
 
   useEffect(() => {
     const stompClient = new Client({
-      brokerURL: "ws://localhost:8080/ws/websocket",
+      //brokerURL: "ws://localhost:8080/ws/websocket",
+      brokerURL: WS_URL,
       reconnectDelay: 5000,
       debug: (str) => console.log(str),
 
