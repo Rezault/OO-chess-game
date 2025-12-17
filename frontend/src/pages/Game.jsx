@@ -30,7 +30,7 @@ function Game() {
     const stompClient = new Client({
       //brokerURL: "ws://localhost:8080/ws/websocket",
       //brokerURL: WS_URL,
-      webSocketFactory: () => new SockJS("WS_URL"),
+      webSocketFactory: () => new SockJS(WS_URL),
       reconnectDelay: 5000,
       debug: (str) => console.log(str),
 
