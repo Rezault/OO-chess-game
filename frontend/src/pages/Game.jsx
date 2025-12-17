@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import ChessBoard from "../components/ChessBoard";
 import Chat from "../components/Chat";
-import { Client } from "@stomp/stompjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getGameStatus } from "../game/engine";
 import PowerUp from "../components/PowerUp";
@@ -9,6 +8,8 @@ import PowerUpAnnouncement from "../components/PowerUpAnnouncement";
 import GameOverAnnouncement from "../components/GameOverAnnouncement";
 
 import { WS_URL } from "../config";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 
 function Game() {
   const [client, setClient] = useState(null);
@@ -28,7 +29,8 @@ function Game() {
   useEffect(() => {
     const stompClient = new Client({
       //brokerURL: "ws://localhost:8080/ws/websocket",
-      brokerURL: WS_URL,
+      //brokerURL: WS_URL,
+      webSocketFactory: () => new SockJS(WS_URL),
       reconnectDelay: 5000,
       debug: (str) => console.log(str),
 
